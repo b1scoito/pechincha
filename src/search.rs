@@ -411,30 +411,15 @@ fn is_relevant(title: &str, query: &str) -> bool {
         "the", "for", "with", "and", "or", "a", "an", "o", "e", "um", "uma",
     ];
 
-    // Normalize: lowercase, split on hyphens/underscores AND letter-digit boundaries
-    // "LP-6v2" → "lp 6 v2", "RTX4070" → "rtx 4070"
+    // Normalize: lowercase, replace hyphens with spaces
+    // Keep letter-digit combinations intact (LP6, v2, 4070ti are single tokens)
     let normalize = |s: &str| -> String {
-        let lower = s.to_lowercase();
-        let mut result = String::new();
-        let mut prev_is_digit = false;
-        for c in lower.chars() {
-            if c == '-' || c == '_' {
-                result.push(' ');
-                prev_is_digit = false;
-            } else if c.is_ascii_digit() && !prev_is_digit && !result.is_empty() && !result.ends_with(' ') {
-                result.push(' ');
-                result.push(c);
-                prev_is_digit = true;
-            } else if !c.is_ascii_digit() && prev_is_digit {
-                result.push(' ');
-                result.push(c);
-                prev_is_digit = false;
-            } else {
-                result.push(c);
-                prev_is_digit = c.is_ascii_digit();
-            }
-        }
-        result.split_whitespace().collect::<Vec<_>>().join(" ")
+        s.to_lowercase()
+            .replace('-', " ")
+            .replace('_', " ")
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
     };
 
     let title_norm = normalize(title);
@@ -460,10 +445,12 @@ fn is_relevant(title: &str, query: &str) -> bool {
         .map(|s| s.as_str())
         .collect();
 
-    // All core tokens must match
+    // All core tokens must match — also try matching with spaces stripped
+    // so "6v2" matches "6 v2" and "lp6" matches "lp 6"
+    let title_no_spaces = title_norm.replace(' ', "");
     let core_match = core_tokens
         .iter()
-        .all(|token| title_norm.contains(token));
+        .all(|token| title_norm.contains(token) || title_no_spaces.contains(token));
 
     if !core_match {
         return false;
@@ -473,7 +460,7 @@ fn is_relevant(title: &str, query: &str) -> bool {
     let total = query_tokens.len();
     let matched = query_tokens
         .iter()
-        .filter(|token| title_norm.contains(token.as_str()))
+        .filter(|token| title_norm.contains(token.as_str()) || title_no_spaces.contains(token.as_str()))
         .count();
 
     matched * 2 >= total
