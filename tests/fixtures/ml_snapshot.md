@@ -1,0 +1,1654 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]:
+        - navigation "Menú de métodos abreviados" [ref=e5]:
+          - heading "Pular para" [level=2]
+          - list "Pular para" [ref=e6]:
+            - listitem:
+              - link "Pular para o conteúdo" [ref=e7] [cursor=pointer]:
+                - /url: "#root-app"
+            - listitem:
+              - link "Comentar sobre acessibilidade" [ref=e8] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/acessibilidade/feedback
+          - separator [ref=e9]
+          - heading "Atalhos do teclado" [level=2]
+          - list "Atalhos do teclado" [ref=e10]:
+            - listitem:
+              - link "Buscar /" [ref=e11] [cursor=pointer]:
+                - /url: "#cb1-edit"
+                - generic:
+                  - generic: Buscar
+                  - generic [ref=e13]: /
+            - listitem:
+              - link "Minhas compras P" [ref=e14] [cursor=pointer]:
+                - /url: https://myaccount.mercadolivre.com.br/purchases/list
+                - generic:
+                  - generic: Minhas compras
+                  - generic [ref=e16]: P
+            - listitem:
+              - link "Carrinho C" [ref=e17] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/gz/cart/v2
+                - generic:
+                  - generic: Carrinho
+                  - generic [ref=e19]: C
+            - listitem:
+              - link "Pular para filtros e resultados F" [ref=e20] [cursor=pointer]:
+                - /url: "#results"
+                - generic:
+                  - generic: Pular para filtros e resultados
+                  - generic [ref=e22]: F
+            - listitem:
+              - link "Abrir/fechar o menu de atalhos Z" [ref=e23] [cursor=pointer]:
+                - /url: "#"
+                - generic:
+                  - generic: Abrir/fechar o menu de atalhos
+                  - generic [ref=e25]: Z
+          - generic [ref=e28]: Para navegar entre os elementos, use as setas para cima ou para baixo do teclado.
+        - link "Mercado Livre Brasil - Onde comprar e vender de Tudo" [ref=e29] [cursor=pointer]:
+          - /url: //www.mercadolivre.com.br
+      - search [ref=e31]:
+        - generic [ref=e32]: Digite o que você quer encontrar
+        - combobox "Digite o que você quer encontrar" [ref=e33]: dyson v15 detect
+        - button "em todo Mercado Livre" [ref=e34]:
+          - generic: em todo Mercado Livre
+        - button "Buscar" [ref=e36] [cursor=pointer]:
+          - img "Buscar" [ref=e37]: 
+        - text: Lojas oficiais
+      - link "Meli+. Disney. Zootopia 2. A partir de R$10,90 por mês." [ref=e39] [cursor=pointer]:
+        - /url: https://www.mercadolivre.com.br/assinaturas/melimais/planos#origin=bannermenu-acq-disney_zootopia-12032026-30032026&me.audience=all&me.bu=3&me.bu_line=26&me.component_id=banner_menu_web_ml&me.content_id=BM_SOV_LOYALTY_ACQUISITION_MELIMAIS_1203&me.flow=-1&me.logic=user_journey&me.position=0
+        - img "Meli+. Disney. Zootopia 2. A partir de R$10,90 por mês." [ref=e40]
+      - link " Enviar para João Pessoa 58073415" [ref=e43] [cursor=pointer]:
+        - /url: https://www.mercadolivre.com.br/navigation/addresses-hub?go=https%3A%2F%2Flista.mercadolivre.com.br%2Fdyson-v15-detect
+        - text: 
+        - generic [ref=e44]: Enviar para
+        - generic [ref=e45]: João Pessoa 58073415
+      - list [ref=e48]:
+        - listitem [ref=e49]:
+          - button "Categorias" [ref=e50] [cursor=pointer]
+        - listitem [ref=e51]:
+          - link "Ofertas" [ref=e52] [cursor=pointer]:
+            - /url: https://www.mercadolivre.com.br/ofertas#nav-header
+        - listitem [ref=e53]:
+          - link "Cupons" [ref=e54] [cursor=pointer]:
+            - /url: https://www.mercadolivre.com.br/cupons?source_page=mperfil#nav-header
+        - listitem [ref=e55]:
+          - link "Supermercado" [ref=e56] [cursor=pointer]:
+            - /url: https://www.mercadolivre.com.br/ofertas/supermercado#nav-header
+        - listitem [ref=e57]:
+          - link "Moda" [ref=e58] [cursor=pointer]:
+            - /url: https://www.mercadolivre.com.br/c/calcados-roupas-e-bolsas#nav-header
+        - listitem [ref=e59]:
+          - link "Vender" [ref=e60] [cursor=pointer]:
+            - /url: https://www.mercadolivre.com.br/syi/core/list#nav-header
+        - listitem [ref=e61]:
+          - link "Contato" [ref=e62] [cursor=pointer]:
+            - /url: https://www.mercadolivre.com.br/ajuda#nav-header
+      - generic [ref=e63]:
+        - navigation "Menu do usuário" [ref=e64]:
+          - list [ref=e65]:
+            - listitem [ref=e66]:
+              - link "Crie a sua conta" [ref=e67] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/registration?confirmation_url=https%3A%2F%2Flista.mercadolivre.com.br%2Fdyson-v15-detect#nav-header
+            - listitem [ref=e68]:
+              - link "Entre" [ref=e69] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com/jms/mlb/lgz/login?platform_id=ML&go=https%3A%2F%2Flista.mercadolivre.com.br%2Fdyson-v15-detect&loginType=explicit&client_id=6280072776285528#nav-header
+            - listitem [ref=e70]:
+              - link "Compras" [ref=e71] [cursor=pointer]:
+                - /url: https://myaccount.mercadolivre.com.br/purchases/list#nav-header
+        - link "" [ref=e72] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/gz/cart/v2
+          - generic [ref=e73]: 
+  - main [ref=e74]:
+    - generic [ref=e75]:
+      - list [ref=e77]:
+        - listitem [ref=e78]: "Buscas relacionadas:"
+        - listitem [ref=e79]:
+          - link "dyson v11" [ref=e80] [cursor=pointer]:
+            - /url: https://lista.mercadolivre.com.br/dyson-v11#topkeyword
+      - generic [ref=e81]:
+        - complementary [ref=e82]:
+          - generic [ref=e83]:
+            - list [ref=e84]:
+              - listitem [ref=e85]:
+                - link "Eletrodomésticos" [ref=e86] [cursor=pointer]:
+                  - /url: https://www.mercadolivre.com.br/c/eletrodomesticos
+                - img [ref=e87]
+              - listitem [ref=e89]:
+                - link "Pequenos Eletrodomésticos" [ref=e90] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/
+                - img [ref=e91]
+              - listitem [ref=e93]:
+                - link "Para a Casa" [ref=e94] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/
+                - img [ref=e95]
+              - listitem [ref=e97]:
+                - link "Aspiradores" [ref=e98] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/
+            - heading "Dyson v15 detect" [level=1] [ref=e99]
+          - generic [ref=e101]: 29 resultados
+          - link "Ir para resultados" [ref=e102] [cursor=pointer]:
+            - /url: "#results"
+          - heading "Filtros" [level=2] [ref=e103]
+          - generic [ref=e104]:
+            - list [ref=e106]:
+              - listitem [ref=e107] [cursor=pointer]:
+                - generic [ref=e109]:
+                  - switch "Compra Internacional" [ref=e110]
+                  - generic [ref=e111]:
+                    - img "Compra Internacional" [ref=e113]
+                    - generic [ref=e115]: Frete grátis em carrinhos a partir de R$ 79
+            - list [ref=e117]:
+              - listitem [ref=e118] [cursor=pointer]:
+                - generic [ref=e120]:
+                  - switch "Envio local Produtos com frete nacional" [ref=e121]
+                  - generic [ref=e122]:
+                    - generic [ref=e123]:
+                      - img [ref=e124]
+                      - text: Envio local
+                    - generic [ref=e126]: Produtos com frete nacional
+            - list [ref=e128]:
+              - listitem [ref=e129] [cursor=pointer]:
+                - generic [ref=e131]:
+                  - switch "Frete grátis" [ref=e132]
+                  - generic [ref=e134]: Frete grátis
+            - generic [ref=e135]:
+              - heading "Marca" [level=3] [ref=e136]
+              - list [ref=e137]:
+                - listitem [ref=e138]:
+                  - link "Dyson" [ref=e139] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson/dyson-v15-detect_NoIndex_True#applied_filter_id%3DBRAND%26applied_filter_name%3DMarca%26applied_filter_order%3D4%26applied_value_id%3D438204%26applied_value_name%3DDyson%26applied_value_order%3D1%26applied_value_results%3D14%26is_custom%3Dfalse
+                    - generic [ref=e140]: Dyson
+                - listitem [ref=e141]:
+                  - link "JEDELEOS" [ref=e142] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_BRAND_47398652_NoIndex_True#applied_filter_id%3DBRAND%26applied_filter_name%3DMarca%26applied_filter_order%3D4%26applied_value_id%3D47398652%26applied_value_name%3DJEDELEOS%26applied_value_order%3D2%26applied_value_results%3D1%26is_custom%3Dfalse
+                    - generic [ref=e143]: JEDELEOS
+                - listitem [ref=e144]:
+                  - link "Brightshow" [ref=e145] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/brightshow/dyson-v15-detect_NoIndex_True#applied_filter_id%3DBRAND%26applied_filter_name%3DMarca%26applied_filter_order%3D4%26applied_value_id%3D24298550%26applied_value_name%3DBrightshow%26applied_value_order%3D3%26applied_value_results%3D1%26is_custom%3Dfalse
+                    - generic [ref=e146]: Brightshow
+            - generic [ref=e147]:
+              - heading "Custo de envio" [level=3] [ref=e148]
+              - list [ref=e149]:
+                - listitem [ref=e150]:
+                  - link "Grátis" [ref=e151] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_CustoFrete_Gratis_NoIndex_True#applied_filter_id%3Dshipping_cost%26applied_filter_name%3DCusto+de+envio%26applied_filter_order%3D5%26applied_value_id%3Dfree%26applied_value_name%3DGr%C3%A1tis%26applied_value_order%3D1%26applied_value_results%3D22%26is_custom%3Dfalse
+                    - generic [ref=e152]: Grátis
+            - generic [ref=e153]:
+              - heading "Pagamento" [level=3] [ref=e154]
+              - list [ref=e155]:
+                - listitem [ref=e156]:
+                  - link "Parcelamento sem juros" [ref=e157] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_Installments_NoInterest_NoIndex_True#applied_filter_id%3Dinstallments%26applied_filter_name%3DPagamento%26applied_filter_order%3D6%26applied_value_id%3Dno_interest%26applied_value_name%3DParcelamento+sem+juros%26applied_value_order%3D1%26applied_value_results%3D15%26is_custom%3Dfalse
+                    - generic [ref=e158]: Parcelamento sem juros
+            - generic [ref=e159]:
+              - heading "Descontos" [level=3] [ref=e160]
+              - list [ref=e161]:
+                - listitem [ref=e162]:
+                  - link "Mais de 10% OFF" [ref=e163] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_Discount_10-100_NoIndex_True#applied_filter_id%3Ddiscount%26applied_filter_name%3DDescontos%26applied_filter_order%3D7%26applied_value_id%3D10-100%26applied_value_name%3DMais+de+10%25+OFF%26applied_value_order%3D1%26applied_value_results%3D4%26is_custom%3Dfalse
+                    - generic [ref=e164]: Mais de 10% OFF
+                - listitem [ref=e165]:
+                  - link "Mais de 15% OFF" [ref=e166] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_Discount_15-100_NoIndex_True#applied_filter_id%3Ddiscount%26applied_filter_name%3DDescontos%26applied_filter_order%3D7%26applied_value_id%3D15-100%26applied_value_name%3DMais+de+15%25+OFF%26applied_value_order%3D2%26applied_value_results%3D3%26is_custom%3Dfalse
+                    - generic [ref=e167]: Mais de 15% OFF
+                - listitem [ref=e168]:
+                  - link "Mais de 20% OFF" [ref=e169] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_Discount_20-100_NoIndex_True#applied_filter_id%3Ddiscount%26applied_filter_name%3DDescontos%26applied_filter_order%3D7%26applied_value_id%3D20-100%26applied_value_name%3DMais+de+20%25+OFF%26applied_value_order%3D3%26applied_value_results%3D2%26is_custom%3Dfalse
+                    - generic [ref=e170]: Mais de 20% OFF
+            - list [ref=e172]:
+              - listitem [ref=e173]:
+                - heading "Preço" [level=3] [ref=e174]
+              - listitem [ref=e175]:
+                - link "Até R$ 150" [ref=e176] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_PriceRange_0BRL-150BRL_NoIndex_True
+                  - generic [ref=e177]: Até R$ 150
+              - listitem [ref=e178]:
+                - link "R$ 150 a R$ 6.500" [ref=e179] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_PriceRange_150BRL-6500BRL_NoIndex_True
+                  - generic [ref=e180]: R$ 150 a R$ 6.500
+              - listitem [ref=e181]:
+                - link "Mais de R$ 6.500" [ref=e182] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_PriceRange_6500BRL-0BRL_NoIndex_True
+                  - generic [ref=e183]: Mais de R$ 6.500
+              - listitem [ref=e184]:
+                - generic [ref=e185]:
+                  - textbox "Mínimo" [ref=e189]
+                  - generic [ref=e190]: —
+                  - textbox "Máximo" [ref=e194]
+                  - generic [ref=e195]:
+                    - button "Aplicar" [disabled]:
+                      - img
+            - generic [ref=e196]:
+              - heading "Lojas oficiais" [level=3] [ref=e197]
+              - list [ref=e198]:
+                - listitem [ref=e199]:
+                  - link "Somente lojas oficiais" [ref=e200] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_Loja_all_NoIndex_True#applied_filter_id%3Dofficial_store%26applied_filter_name%3DLojas+oficiais%26applied_filter_order%3D9%26applied_value_id%3Dall%26applied_value_name%3DSomente+lojas+oficiais%26applied_value_order%3D1%26applied_value_results%3D1%26is_custom%3Dfalse
+                    - generic [ref=e201]: Somente lojas oficiais
+            - generic [ref=e202]:
+              - heading "Origem do frete" [level=3] [ref=e203]
+              - list [ref=e204]:
+                - listitem [ref=e205]:
+                  - link "Internacional" [ref=e206] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_NoIndex_True_SHIPPING*ORIGIN_10215069#applied_filter_id%3DSHIPPING_ORIGIN%26applied_filter_name%3DOrigem+do+frete%26applied_filter_order%3D10%26applied_value_id%3D10215069%26applied_value_name%3DInternacional%26applied_value_order%3D1%26applied_value_results%3D21%26is_custom%3Dfalse
+                    - generic [ref=e207]: Internacional
+                - listitem [ref=e208]:
+                  - link "Local" [ref=e209] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_NoIndex_True_SHIPPING*ORIGIN_10215068#applied_filter_id%3DSHIPPING_ORIGIN%26applied_filter_name%3DOrigem+do+frete%26applied_filter_order%3D10%26applied_value_id%3D10215068%26applied_value_name%3DLocal%26applied_value_order%3D2%26applied_value_results%3D8%26is_custom%3Dfalse
+                    - generic [ref=e210]: Local
+            - generic [ref=e211]:
+              - heading "Retirada grátis" [level=3] [ref=e212]
+              - list [ref=e213]:
+                - listitem [ref=e214]:
+                  - link "Santa Catarina" [ref=e215] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_NoIndex_True_pickup*state_TUxCUFNBTkE5Nzc4#applied_filter_id%3Dpickup_state%26applied_filter_name%3DRetirada+gr%C3%A1tis%26applied_filter_order%3D11%26applied_value_id%3DTUxCUFNBTkE5Nzc4%26applied_value_name%3DSanta+Catarina%26applied_value_order%3D1%26applied_value_results%3D1%26is_custom%3Dfalse
+                    - generic [ref=e216]: Santa Catarina
+            - generic [ref=e217]:
+              - heading "Capacidade em volume" [level=3] [ref=e218]
+              - list [ref=e219]:
+                - listitem [ref=e220]:
+                  - link "Menos de 550 mL" [ref=e221] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_NoIndex_True_VOLUME*CAPACITY_*-550mL#applied_filter_id%3DVOLUME_CAPACITY%26applied_filter_name%3DCapacidade+em+volume%26applied_filter_order%3D12%26applied_value_id%3D%28*-550mL%29%26applied_value_name%3DMenos+de+550+mL%26applied_value_order%3D2%26applied_value_results%3D2%26is_custom%3Dfalse
+                    - generic [ref=e222]: Menos de 550 mL
+                - listitem [ref=e223]:
+                  - link "550 mL ou mais" [ref=e224] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_NoIndex_True_VOLUME*CAPACITY_550mL-*#applied_filter_id%3DVOLUME_CAPACITY%26applied_filter_name%3DCapacidade+em+volume%26applied_filter_order%3D12%26applied_value_id%3D%5B550mL-*%29%26applied_value_name%3D550+mL+ou+mais%26applied_value_order%3D1%26applied_value_results%3D8%26is_custom%3Dfalse
+                    - generic [ref=e225]: 550 mL ou mais
+                - listitem [ref=e226]:
+                  - generic [ref=e227]:
+                    - textbox "Mínimo" [ref=e231]
+                    - generic [ref=e232]: —
+                    - textbox "Máximo" [ref=e236]
+                    - generic [ref=e237]:
+                      - button "Aplicar" [disabled]:
+                        - img
+            - generic [ref=e238]:
+              - heading "Outras características" [level=3] [ref=e239]
+              - list [ref=e240]:
+                - listitem [ref=e241]:
+                  - link "Inclui bateria" [ref=e242] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/inclui-bateria/dyson-v15-detect_NoIndex_True#applied_filter_id%3DINCLUDES_BATTERY%26applied_filter_name%3DOutras+caracter%C3%ADsticas%26applied_filter_order%3D12%26applied_value_id%3D242085%26applied_value_name%3DInclui+bateria%26applied_value_order%3D1%26applied_value_results%3D11%26is_custom%3Dfalse
+                    - generic [ref=e243]: Inclui bateria
+                - listitem [ref=e244]:
+                  - link "Inclui filtros reutilizáveis" [ref=e245] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/inclui-filtros-reutilizaveis/dyson-v15-detect_NoIndex_True#applied_filter_id%3DINCLUDES_REUSABLE_FILTERS%26applied_filter_name%3DOutras+caracter%C3%ADsticas%26applied_filter_order%3D12%26applied_value_id%3D242085%26applied_value_name%3DInclui+filtros+reutiliz%C3%A1veis%26applied_value_order%3D2%26applied_value_results%3D7%26is_custom%3Dfalse
+                    - generic [ref=e246]: Inclui filtros reutilizáveis
+                - listitem [ref=e247]:
+                  - link "É adequado para líquido" [ref=e248] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/e-adequado-liquido/dyson-v15-detect_NoIndex_True#applied_filter_id%3DIS_SUITABLE_FOR_LIQUID%26applied_filter_name%3DOutras+caracter%C3%ADsticas%26applied_filter_order%3D12%26applied_value_id%3D242085%26applied_value_name%3D%C3%89+adequado+para+l%C3%ADquido%26applied_value_order%3D3%26applied_value_results%3D2%26is_custom%3Dfalse
+                    - generic [ref=e249]: É adequado para líquido
+                - listitem [ref=e250]:
+                  - link "É sem fio" [ref=e251] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/e-sem-fio/dyson-v15-detect_NoIndex_True#applied_filter_id%3DIS_WIRELESS%26applied_filter_name%3DOutras+caracter%C3%ADsticas%26applied_filter_order%3D12%26applied_value_id%3D242085%26applied_value_name%3D%C3%89+sem+fio%26applied_value_order%3D4%26applied_value_results%3D13%26is_custom%3Dfalse
+                    - generic [ref=e252]: É sem fio
+                - listitem [ref=e253]:
+                  - link "Com filtro de saída" [ref=e254] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/com-filtro-saida/dyson-v15-detect_NoIndex_True#applied_filter_id%3DWITH_OUTPUT_FILTER%26applied_filter_name%3DOutras+caracter%C3%ADsticas%26applied_filter_order%3D12%26applied_value_id%3D242085%26applied_value_name%3DCom+filtro+de+sa%C3%ADda%26applied_value_order%3D0%26applied_value_results%3D7%26is_custom%3Dfalse
+                    - generic [ref=e255]: Com filtro de saída
+            - generic [ref=e256]:
+              - heading "Detalhes do anúncio" [level=3] [ref=e257]
+              - list [ref=e258]:
+                - listitem [ref=e259]:
+                  - link "Melhores vendedores" [ref=e260] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/eletrodomesticos/pequenos-eletrodomesticos/casa/aspiradores/dyson-v15-detect_BestSellers_YES_NoIndex_True#applied_filter_id%3Dpower_seller%26applied_filter_name%3DFiltro+MercadoL%C3%ADderes%26applied_filter_order%3D1%26applied_value_id%3Dyes%26applied_value_name%3DMelhores+vendedores%26applied_value_order%3D1%26applied_value_results%3D10%26is_custom%3Dfalse
+                    - generic [ref=e261]: Melhores vendedores
+            - generic [ref=e262]:
+              - heading "Outras pessoas pesquisaram" [level=3] [ref=e263]
+              - list [ref=e264]:
+                - listitem [ref=e265]:
+                  - link "dyson v15" [ref=e266] [cursor=pointer]:
+                    - /url: https://lista.mercadolivre.com.br/dyson-v15#D[R:dyson v15 detect,P:1,Q:1]
+                    - generic [ref=e267]: dyson v15
+        - generic [ref=e268]:
+          - generic [ref=e272]:
+            - generic [ref=e274]:
+              - link "AMJIMPORTMATERIAIS" [ref=e276] [cursor=pointer]:
+                - /url: https://click1.mercadolivre.com.br/brand_ads/clicks/MLB/count?a=XavK8Tv84dajl2m2DEXCSy%2FQXIHShkiCGdNZn0tLfmj6WtGEarEgVnt5BBS8Wcwjo0gUzAAy4fNs762oe64qECsjYzv9Dn4ixzspzvTlfFn%2BPSZ%2BExSyo%2BydtEG178JEZHtey2%2FqJJcMeYlzSPytzuwGhvTCiOD9SLL%2FEV7Qw%2BF%2FSKFPwkYyYrj1sG3fnptaxxEtZF8xHZXigVGvslpoHYbokIeZKQ7xixJOGHaPO3F0xQgx7Y%2FW94RotIuRpwFbU%2BTB6gobqIGe2twSJWh%2FYRhYpRLlnc8UWPJmc6i38xNWoPYUlPpBEV8u7R3N1Ha87%2FGH3ADs4CEuMLrcuRoAkPS68geserPbKBTvHqQWAYpFgVvx4yLLyeCmVu9kSTwohbK%2BpTKKM4S3erdNVfXvhcDHgHQdBO%2F10KYk7izX%2F6BQx5WtxQBRGsD7XrdZt97YUcFW%2F52j7Kfm2bfG3TAxDcC9G8yF%2BMWykTx3x4tXFLJIDMQYVv5tkrU7CqNlyMN9vJoDxIc1MscRTvDttqP9CZPvZFvDggitL7BxKBQ0uSLeViG%2BXrNXuQzPev11%2BXHasheO1fwwGFnl7l7JBWu2b9NBFJ%2BebxZwgfyr4l7fSup8nXn2QymupfyLwtQqartOsZc4Lapw5Y5N1m18W3KQniUBylPdnklgdKef%2F1Vs2nGCbrrcB1AXpQtWL0YGXHbnN%2B%2B49Q%2Fgxr8zZOMNhOMPHPVOGBG%2BlIGCNIHq50wi%2Ffq8clgoVudh%2F8ww8g7civPucIPnPjqLalXnwy1mODURjECQGJ%2Bm%2F1ICUvLgu7LFJz1i4PHJUQuiEYtmx8zSlpTJs32iDewbrc9jo%2BK%2BVsIiJSx1%2FMfYjzLkiq1W6MCFh5GRZJr%2B9AoM%2F74qvh3uutazPM4TTuKSf3Imwc8lRzGuxiCLyE1eZX%2F3Tq3RaTaWjGJ894pGN0Cmk7dayyP%2FXNwP3S5MigPCJkF9En4D6rQybFwJhU%2Fb%2B08oe9krYM9YBBwnGA3pmPtwIN3Gp6Lc9Xe2fnh5p7SG2IcF20M%2FQ90n3oJZt3jqltkZt5ZNc3GDLklHKdp6LcWdD6Nc5r0Z4V9i%2FQFeJigAt4Zy0b%2Bq3dsK2su0b6qVUConL%2BFGOSmNkTADDNm7dw2pcvFSO2EWRMQvdrFOfP8d5xFIWQCtOuPFIJ2tZoTVVcUokk9HveTx4SJdNDIk0qokmOMxHQScibelE%2BAp0WlbISsS27S%2BmLq%2F4DvbolnqITjENEj%2FH4EIwRcLkisnlob6HUDLtHCvTMxvEzkf8gnMErSi2W%2B8xQNnM12s5T6dAwAqtRtJXVDMnBiUqC3lZHcsCZmlo8jqZ%2FaXKVsgLff%2FutmbjvBZJWpmmFo6ug71c9p1o18heuqOw0Z%2FXA4Bp62xl2unUypZ14atI8TCD1qS
+                - img "AMJIMPORTMATERIAIS" [ref=e277]
+              - generic [ref=e279]:
+                - heading "AMJIMPORTMATERIAIS" [level=3] [ref=e281]
+                - generic [ref=e284]: +1.700 seguidores
+              - link "Ir para a loja" [ref=e286] [cursor=pointer]:
+                - /url: https://click1.mercadolivre.com.br/brand_ads/clicks/MLB/count?a=XavK8Tv84dajl2m2DEXCSy%2FQXIHShkiCGdNZn0tLfmj6WtGEarEgVnt5BBS8Wcwjo0gUzAAy4fNs762oe64qECsjYzv9Dn4ixzspzvTlfFn%2BPSZ%2BExSyo%2BydtEG178JEZHtey2%2FqJJcMeYlzSPytzuwGhvTCiOD9SLL%2FEV7Qw%2BF%2FSKFPwkYyYrj1sG3fnptaxxEtZF8xHZXigVGvslpoHYbokIeZKQ7xixJOGHaPO3F0xQgx7Y%2FW94RotIuRpwFbU%2BTB6gobqIGe2twSJWh%2FYRhYpRLlnc8UWPJmc6i38xNWoPYUlPpBEV8u7R3N1Ha87%2FGH3ADs4CEuMLrcuRoAkPS68geserPbKBTvHqQWAYpFgVvx4yLLyeCmVu9kSTwohbK%2BpTKKM4S3erdNVfXvhcDHgHQdBO%2F10KYk7izX%2F6BQx5WtxQBRGsD7XrdZt97YUcFW%2F52j7Kfm2bfG3TAxDcC9G8yF%2BMWykTx3x4tXFLJIDMQYVv5tkrU7CqNlyMN9vJoDxIc1MscRTvDttqP9CZPvZFvDggitL7BxKBQ0uSLeViG%2BXrNXuQzPev11%2BXHasheO1fwwGFnl7l7JBWu2b9NBFJ%2BebxZwgfyr4l7fSup8nXn2QymupfyLwtQqartOsZc4Lapw5Y5N1m18W3KQniUBylPdnklgdKef%2F1Vs2nGCbrrcB1AXpQtWL0YGXHbnN%2B%2B49Q%2Fgxr8zZOMNhOMPHPVOGBG%2BlIGCNIHq50wi%2Ffq8clgoVudh%2F8ww8g7civPucIPnPjqLalXnwy1mODURjECQGJ%2Bm%2F1ICUvLgu7LFJz1i4PHJUQuiEYtmx8zSlpTJs32iDewbrc9jo%2BK%2BVsIiJSx1%2FMfYjzLkiq1W6MCFh5GRZJr%2B9AoM%2F74qvh3uutazPM4TTuKSf3Imwc8lRzGuxiCLyE1eZX%2F3Tq3RaTaWjGJ894pGN0Cmk7dayyP%2FXNwP3S5MigPCJkF9En4D6rQybFwJhU%2Fb%2B08oe9krYM9YBBwnGA3pmPtwIN3Gp6Lc9Xe2fnh5p7SG2IcF20M%2FQ90n3oJZt3jqltkZt5ZNc3GDLklHKdp6LcWdD6Nc5r0Z4V9i%2FQFeJigAt4Zy0b%2Bq3dsK2su0b6qVUConL%2BFGOSmNkTADDNm7dw2pcvFSO2EWRMQvdrFOfP8d5xFIWQCtOuPFIJ2tZoTVVcUokk9HveTx4SJdNDIk0qokmOMxHQScibelE%2BAp0WlbISsS27S%2BmLq%2F4DvbolnqITjENEj%2FH4EIwRcLkisnlob6HUDLtHCvTMxvEzkf8gnMErSi2W%2B8xQNnM12s5T6dAwAqtRtJXVDMnBiUqC3lZHcsCZmlo8jqZ%2FaXKVsgLff%2FutmbjvBZJWpmmFo6ug71c9p1o18heuqOw0Z%2FXA4Bp62xl2unUypZ14atI8TCD1qS
+                - generic [ref=e287]: Ir para a loja
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - link "Higienizador Top Clean A Vapor Para Todos Os Tipos De Tapete Amarelo 220v, 13% OFF, 197" [ref=e291] [cursor=pointer]:
+                  - /url: https://click1.mercadolivre.com.br/brand_ads/clicks/MLB/count?a=BAbSlrz1IgUhsPSe4%2Be%2BpQyERj%2FwARt2CqbwFJUqkOoZRCbdI8YVlvyLLbASk%2FYBZroPBPQ5fTqhhrL%2FTDAzfQWpevmjCw9e%2BkIRP2y%2Bg01abWXdh46MtoyN94ahB%2FoWCTjTR3VwZiHkyW%2Fcqzsn%2F0MqrH35%2FjmwZ%2BrQx8yTcd%2BVBRC9h2FLhj5HTro1B2ejI7kYTVvgS3oM9faOMsEHkDVfBYtMyzRwbU1n3xSwpDa3QwdlnvFpUJ9AI8wvtxrWnhwg2SrX85Zfr754dXU%2FsHmDCmFGmY%2Fecn8iJmTNTUCTaDAwV9SBaymIsK04kfcaum%2FmmWvGp1k2JUHWJapUZq4IEqBkeseiIsJkMq9ouyNmsNei3E1VXgz6Kat3xUUFSfa6hUCefV9G4KUmdU62iOAmzvac60zIEdxlqJsrwAfTewa9iMbG6XRl3lWcQ2uaU%2FMqlmRnHSMtZPENbRWqltxVAW7zKA0HwkpyMrBB6m5qqE4nDFxYoWJkrVTvVCm9teK7G49%2BvVdZW%2F7xrThF4HdGaldk3Mk8aFGozfkbzxmfUizbf2dnMqWVsEVz86h4rBG%2F1s2BH6pKkJxFkKNMQ%2BIxlgVUXD%2Fyx8P5FRJ6PCGvXsOzwoHJS1yX0nACHK6dmc09mmYQ%2Fx9eIf8h2bKYjyan965f5pmx1iI9XA7RTM16kIcgByACndh3uJXSTc8W1chSF5s9Ce7SV%2Fvt8s2d3HGceHjxlYaeENE23De%2BsS8DsFVbOPLDSEInVVhBLNjr7rcnwVlqfWyoJj8Z4ie5%2BJlpJ7OMIgLCUlGV%2FWX2uZF1JK10QjGhnDOF0k9nebuxfmhjQqACS9EswdxiaJ7yQfD%2B50q24PbmNXaHfuo4C02Dr2w%2BHuqX83Iq6sStc%2BFQutvYVQsD7vx8Bst%2BgtBaaaj86ADG9ZerOfCPGZkpuS0Q3o5SvijHDI%2FLE6qozZkpJQoF0h0iUcUTHgtvH6TmBTrmM2w%2Fk155glmVAtjHy9wqr45aVtoF8a1hexv93JV5z6e6UNc8pJbZBSyUjWpMK4lMIoh41IA%2FZovPiAyo%2FCUjkAi%2BQTi%2FD0CZJ8SIheYHyllDxFVWtePOhT3POsbdjy2POwwP%2BJC8a62TL5bbjefpehXu7bpxSKnk3CNDH%2FFglDJkqodo%2BpR%2Ffi5uGsPsuuQV38oEoghTiUNaaiMkqVrNKH7M8eMU0IMLQ2QM83IKAJrs4i5iD4iaoRwl3LtNW86TjNjoJcbSIBEybps4YD9zQGehcCO6o6QpLSUUtfwU%2BF%2BuleLVTCXIpYlhS9pk2YL4ikzH31u1Mf0GhmF6noBs%2FZKAAQp2UoaB2s2H93abb7p5KoAyz09HkHpiBmDY%2FzJtWGeF8A5CfOSN2xwYgHupsunO%2FZMboZDeVmtrNzUmLjNcMLv4U56rcqB0pdapBU2Xf4D%2FAJeK2TzFs%2BxfKU84p%2FGZoOubZjfMiK%2FvuTacEwNIlS3XujUUfZVd5XEGaY9r8p1NYlbeZ50qYUS0xRpAW%2Be1BgWCwsAb79FkpAf1%2FZJnkpBfu7sGPipOcKiQhDoUIlCDlUxC%2B3H2OM0%3D
+                  - img "Higienizador Top Clean A Vapor Para Todos Os Tipos De Tapete Amarelo 220v" [ref=e292]
+                  - generic [ref=e294]: 13% OFF
+                  - img "197 reais com 61 centavos" [ref=e296]:
+                    - generic [ref=e297]: R$
+                    - generic [ref=e298]: "197"
+                    - generic [ref=e299]: ","
+                    - generic [ref=e300]: "61"
+                - link "Higienizador Top Clean A Vapor Para Todos Os Tipos De Tapete Amarelo 220v, 11% OFF, 192" [ref=e301] [cursor=pointer]:
+                  - /url: https://click1.mercadolivre.com.br/brand_ads/clicks/MLB/count?a=q5gRmfOZ1BFBrTOpR7pGn1DvzT8IXQvGoOX4IQjUJU3DKsYFYREWi9dNzT10%2BLA3GasdYUrhkc3%2BQGhCZlKUUT%2Bpkr91uKeWoTR2FHcJyARCsn3%2F2pW8SfQbzVqL2Bldbp8KrrmTOlaLMpuxedLfFc3bfOSxV5aedQp%2BqSOYLB5QTNc%2Fa9vtrKlnuU40p23VtzN%2FV3qE5M6AzubJzp5ay%2FahiIo1RDipfhoXSy1MYiPxtgBbdBiIGHpP3r5kYiUGeJjw3QE9JvEgASWI7oJ9Cm0bykW6S401JWDbfTqhfMt%2FN8BJQmsCXbZ7I%2BKJMS%2BHeeLkVDzZq5CX6kX20eRFawkZgW%2Feypd4zebJQFxdb7sHr4wAakm25z0u3z7zyOzn01yvnOed80nz5EiIMV4GkYw6glTTdkJyyjVd%2FJ%2BaBSG2iP5dDt4p218ra55wlUbmcvgEfObXAmMQ%2BaOBLvJqK%2Fgn1KqjggnkdC%2FRhyPEvxHPgaUBcfpGo5DBS1MS3lOrOG9nG56oXaiqoioRP%2B8EGNU9irorhxrJief9Y38YFETD3opFK%2BuZTWf2LIf6AtcQYoQr%2F1oZcj0mWOZtF6PpIz4EIMWbiOybQDxGVpdn%2B5IVyTVv9m%2B0WXKGfC%2Byni1QGrVjWXTitrmDA%2BZotG%2BVxy9ZphCJsM6OLfNxT6qwNZndNrHCI7pcTXU9e3cWd%2FmFNxtZ9Lc9gMKDsBJ5Ahi6HqAv2QYVypeareNPEZOJDhnnmEtXRz3pekpSo5Q6ZwtCGJFTY2BwrnK6430FhKajQV4Fgnhg8TyOjkIWnn%2BVP20nDfw1AIq4FqFDdL%2BEOt2QWvuDQoZ7HKIQKgPyAedzMD9dzZzjq%2BuSoCbBaASWIV0%2BYFqea9Iv4d9Gdx%2FaOOPjyUcyKu8rlOgOxB04bLgjz18qYyZYcwxzxLymD6lqY0IDCVVDec6CbJbNqW3UWZmN9F6ahPTeabsB6PIDFC10M%2B32BvXxxSNUDDFLH2MeTNRTKV22pCktDCihrWq3MTs5XzHOxl2sILWTnmzatdeL7cdAZ4qmxojaB52LwjvantdYKV20ybJlRui87WeEqqYEp7F4zivDHHs1oKxYfJ9cDc3JVmvAVDACh3N8u5y5xRUTYE5476LkKrxdbQwlSN4k9KntuekTGaTrb2mulHLkxjNWW8gvVtoDPI%2BIcf%2B12cpITObTb2Xk%2F%2FC139IsmqBQWFjjJJylMUvGNAtTgXNM%2FUYRZBSXx9VFTMN%2B7dqAFoVX6PNxoYe699E7PLgtUflIuXOwUqYmvJKED%2FAwcqJdkAkTtmieZwF%2BkgGncYg4vBtje2CelpbVp8Kh%2FIrLt3QXH3liYFuVgRhwXQVlTJShAcKbkepK%2B2GjkZx4raKge8HaQcOH7O%2BqzPvt0nDWybw%2FWretEKTVhZMPv2V2OMdnkgvWicIdPCygJTQXm34hQkoaOn9BFcO%2B26ZPMpWmOR%2Ff2cex5Wt7L8gC6w6QpD27rRqcWhBlo%2B5NhLRWeZFPmV1egH%2FWk%2FxmT1HeLIb%2F%2BPkwP%2FWTOuXMuDRzxpwO%2BRCkN04T%2B1fcqPx2TpGGaQ4%3D
+                  - img "Higienizador Top Clean A Vapor Para Todos Os Tipos De Tapete Amarelo 220v" [ref=e302]
+                  - generic [ref=e304]: 11% OFF
+                  - img "192 reais com 15 centavos" [ref=e306]:
+                    - generic [ref=e307]: R$
+                    - generic [ref=e308]: "192"
+                    - generic [ref=e309]: ","
+                    - generic [ref=e310]: "15"
+                - link "Higienizador A Vapor Intech Top Clean Mata Germes E Bactéria Amarelo 220v, 11% OFF, 197" [ref=e311] [cursor=pointer]:
+                  - /url: https://click1.mercadolivre.com.br/brand_ads/clicks/MLB/count?a=RO63zU9%2BC%2FRDgUBaRLBBulVcuxwBCGHBaWVZhz6ax7vG6iUHVIpHdr3SnkACtBmnClUUH5jR21KGnE3Xy9PnhQSBtMWLl65bMB4i2oKyxVvySWfLqzlfTpCr%2BQ8UVVKx80c5iiwa1LcdlmeBWSJUnaJqha%2FhfGcuDqylZZl2oavMo1kersq%2FF7ooKxtpwtWRv0ZM5ioaNmN1hDKiJ%2BlazLIbEn%2FWglvL0PpkvnQ9vLWd4g641nnXe60l6LX%2Fqqv%2BkiulAL82HXMf4czi5n7ijoN53ogX%2BxA%2FGaVqdnzxF4aTSX7fNHKfAkfwDo%2BtjsjkyMlRvEoVV71hEGNwSuKRzSp1XSBz7t9%2F43aSBtEENxrujtFl%2FiJXGUqGbaPRAirBSnuwOU7sRftv6ciEQ8Tg6aGFNgsQKlaUJRw648842jlBO43UZGtFRzrZ0ux4EqjrO%2Ft3kGk1%2Fme7KNLevUehne1JHgXJRg9vZDQ28odr43kKGzcyIZUqx7w1Wcs3mCs2chFR4i7pagny8sfd1XXvYpG9aoU1DPW1Q9f2mIRJ39vAwKSvkziJjPGF3Zusa9x22WK4uD5ytLA7e4SW1gzppF41LmN1EzN4mpIuK9ptKDUk3%2BBUFIJ9Z5S1n9ScZaSf4RRJYlGa9AiysiL3r9dk9wa9ZIgVJA7zhciZg7zt%2FRm8OPlZYnVzYr9mbq%2Bw2YK9aXTTGe8krupSY4aCstpSwefXGskoWyRR%2F%2BDrHoh%2BHZj%2BbUvNCg5rnXA0VicV2ExstxM7gS4NUf0bQFqfasw8TT5VGQdCoYlNyU7q5x7Hf5j%2FgF4mrvDPOIOzJUxxt2g3XPq6L7DAWoBsBEVH8y2syNZIj7Lj7CLoEUHP5ZRVTfxTDr5sMRtyREaEOPLfM8hdz3YsG5biO3jfmbglqto0YOPxAOy7NvZMSihACM%2Bu867s8QD7MLSq7MlDpqYfPC5kkibFYuPGk2HnyPDYLqMy07bK%2F0Rv8aBAcQ83nPshUTnGqUlhMgge23KpLy%2F18AcYV59Z5Hi94RpOJ30jZfv96vnOcUh6ZtGElLIY51Sv0N135CdnBBTpLhaDYNyGmESQBqKk%2BnVqSKYjf9IE0Wib7JhKwXe9P5ugkHJVYyGu34ipHC0ERPijzOqwVy9NLfAKmd%2FQ9DwK%2BZFUA2ynMCtnJa9Fc27%2FU5Rar%2BQP6ZjDZDiZWuv1X0YPO%2BVQa80juDopkn60VVtebaSaLmNeBC3a2uA7GWqvkFDPMR2stnECk8KjIcjuheM3XkBrHAss6wRVLRYd4zrQyzzmhn205%2FcckBEb1paC%2BBpjFBtoTHvloij8xWhCrr24umPFRf%2FcG2%2BidQEiX34eSdDMXyg2NHMJcIycEOJuL2TSVqldCo1kL76yWC2%2FQf12gz%2FGE21bc2%2BSSKeTu02qf2xaFRlYpDJfO5uSBq%2FBC3deYqDdRVNrkUYt4BqvaOe8IsTm6OZGxqxHRQHO9zwdHoSTKEAyW6SaG10Vd7LJ5A9srn48WPnGyUNFEs16WPs9EPT42j1Zueso661baY2Do4TxvzUz1zOYXqnPCmMrp0%2B8wMh2MAs%3D
+                  - img "Higienizador A Vapor Intech Top Clean Mata Germes E Bactéria Amarelo 220v" [ref=e312]
+                  - generic [ref=e314]: 11% OFF
+                  - img "197 reais com 66 centavos" [ref=e316]:
+                    - generic [ref=e317]: R$
+                    - generic [ref=e318]: "197"
+                    - generic [ref=e319]: ","
+                    - generic [ref=e320]: "66"
+                - link "Higienizador A Vapor Intech Top Clean Mata Germes E Bactéria Amarelo 220v, 13% OFF, 202" [ref=e321] [cursor=pointer]:
+                  - /url: https://click1.mercadolivre.com.br/brand_ads/clicks/MLB/count?a=TrGloRTiDHVBRiLurYSTF1eHLTB4qwikEBVTdh0iWbDVi2mlUIHrgZBxB%2ByqiYpoEmG%2BuaelU%2B%2F3YxHgGPxMicc61QxroXSPOutXTFZYNhyzPI2p70OHukK9IZ4w2HjQFdrNoD0X5eA%2FiI7AzvWtyfUkSpQCw1YXRKAnvcai5SQOGsheP0YJnK0siCM8cXUfM9AJ9E9wxYq1zXZWLMJA8oWyOGOPJZef0%2Bp54TLbUbiTHj3uii9Y1uVr4eFSkCFQAnRVPo9eSqK1AKCLjZFqOCLKXkFRxULi%2BY4HmbpG51VV9bvkfwiGmRnUaQv1liPmTGUbjYLUMo5yNEGAPNJcXRosjJOcFUSZ%2F1IHVeCMBHyBZPupTkP6gm8hcaSnPOBgIS2YPAcS2ojZtaiU3XsBgemZgnQSAoBb7SPJ3S2pugZq0hS2isWPU1l1ZG93joNzyfRo1eFr5X7EU9dhfXBhONXBrAV4QNSsClo5cu2F3iAAKw9Qa3eh2ZembxPRd%2Fxrl7F3O8sodZCLpmV7SH8WDc657vcf5WMTFZ2pS7vt6zivJPuiLmeS3LBUyyN%2BB5dxHNfqBDuNVqS0tO2UovmkSbBm3xXCov%2FkYSEc0a5Dq7jHYmHFkMsstw0JpVx0F265lL002iszKv5iq2vrdxEzjskV3bwr6IOCN9ml%2BvMMG%2FkMc5APCQP3n6aCPIP1WQxGAlh19padZ%2FbZ%2BSAGXafKpM5ze%2FKbW7KHiA3Cio2gEQIeDKrOH2TWrsZA1n78LSi7ge3KSOb2z%2FYrDQOIrqSX3OABJnoAXLoPLdbdjcr1abzjfikvIlkHUvsKlrAcBHd8H0Yjkn0j6HxnPsDuOmu0XFFQ6%2F5CqqhYKMteMwcZ1Rkr1wJLfszHv7NztTsasXpWbdVxHoufvi%2F%2BwAQu7fm8Qz12FAbBlxmD%2FDpaVPf0gOWQ43slzhKeJcPlxsuHmifbXoeKCRCDfxiDGja3qXi8KdSByZH7otUm7sGcRQ4pYCD%2Bh%2FZfHZLQLd4dxmV%2FHVu9HZ2BHTBr4Si66175Wwkf%2Bx2jzS1PURZQFBg5zECnMgZcNPnO8ab9xdB7Lxjue%2F8Djt1QtwCB4KQIjJuHqFBIcsP2XUUnpyKPHCFOhMqnXQIIABW4KjbWX8Rc%2BaGElca8U1DgnB7SHYsOtVjlT%2BGrJFRbPKLDYXmUjdp5kG5ldazB462jjnujLtB6VoVBSbOa1OQmob4WBRJHK2qLWA7Tinp2uXS3b3P0tLkKWmYS0kVQfVlbO36%2BJQ7HpXqzO1augYgBlWgsbbRrZJVCqbgARdgJv%2FDviSN6N9uIrOpAcTAvZvHtZGYRNOwl2hxOOrBWy5WAP2Xr7%2BqI39vCraebKoe8sE61FEmVQPUPgjwnDpitDGJJ%2BsWJxYS8pgnnZvVf5TfgGmhfBFEaGppQppaRhfpk6Q2kDaVUYW1KHDVEOFbYNsR8TtTJPXJjDF8ChLC3b9M383iUTzOFUnBHF9WWhOtkX5fpOmPv%2B%2FrcjGSo2oZAZoX9H%2BfzaRMTCcIp29yUoq0QsNrnGrkKAsKIXzx7UEYdj76FADmZT6W0YoY%3D
+                  - img "Higienizador A Vapor Intech Top Clean Mata Germes E Bactéria Amarelo 220v" [ref=e322]
+                  - generic [ref=e324]: 13% OFF
+                  - img "202 reais com 95 centavos" [ref=e326]:
+                    - generic [ref=e327]: R$
+                    - generic [ref=e328]: "202"
+                    - generic [ref=e329]: ","
+                    - generic [ref=e330]: "95"
+              - button "Next item" [ref=e331] [cursor=pointer]:
+                - img [ref=e332]
+            - generic:
+              - generic: Ad
+          - generic [ref=e334]:
+            - heading "Resultados" [level=2] [ref=e335]
+            - generic [ref=e338]:
+              - generic [ref=e339]: Ordenar por
+              - combobox "Mais relevantes" [ref=e343] [cursor=pointer]:
+                - generic [ref=e344]: Mais relevantes
+                - img [ref=e346]
+          - list [ref=e348]:
+            - listitem [ref=e349]:
+              - generic [ref=e351]:
+                - img [ref=e353]
+                - generic [ref=e354]:
+                  - heading "Aspirador Dyson V15 Detect Sem Fio 8 Acessórios Amarelo" [level=3] [ref=e355]:
+                    - link "Aspirador Dyson V15 Detect Sem Fio 8 Acessórios Amarelo" [ref=e356] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/dyson-v12-detect-slim-cordless-vacuum-cleaner/p/MLB2074123700#polycard_client=search-desktop&search_layout=grid&position=1&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6285957118&sid=search
+                  - generic [ref=e357]:
+                    - img "6577 reais" [ref=e359]:
+                      - generic [ref=e360]: R$
+                      - generic [ref=e361]: "6.577"
+                    - generic [ref=e362]:
+                      - text: 12x
+                      - img "632 reais com 21 centavos" [ref=e363]:
+                        - generic [ref=e365]: R$
+                        - generic [ref=e366]: "632"
+                        - generic [ref=e367]: ","
+                        - generic [ref=e368]: "21"
+                  - generic [ref=e371]:
+                    - img [ref=e372]
+                    - text: Cupom 8% OFF
+                  - img [ref=e375]
+                  - generic [ref=e377]: Internacional
+                  - generic [ref=e378]: Frete grátis
+                - switch "Favorito" [ref=e380] [cursor=pointer]:
+                  - img [ref=e381]
+            - listitem [ref=e383]:
+              - generic [ref=e385]:
+                - img [ref=e387]
+                - generic [ref=e388]:
+                  - heading "Aspirador Sem Fio Dyson V15 Detect Pro Para Empresas" [level=3] [ref=e389]:
+                    - link "Aspirador Sem Fio Dyson V15 Detect Pro Para Empresas" [ref=e390] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/cordless-vacuum-cleaner-dyson-v15-detect-pro-for-business/p/MLB2064999674#polycard_client=search-desktop&search_layout=grid&position=2&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB3905915379&sid=search
+                  - generic [ref=e391]:
+                    - 'img "Antes: 5624 reais" [ref=e392]':
+                      - generic [ref=e393]: R$
+                      - generic [ref=e394]: "5.624"
+                    - generic [ref=e395]:
+                      - 'img "Agora: 4907 reais" [ref=e396]':
+                        - generic [ref=e397]: R$
+                        - generic [ref=e398]: "4.907"
+                      - generic [ref=e399]: 12% OFF
+                    - generic [ref=e400]:
+                      - text: 10x
+                      - img "490 reais com 75 centavos" [ref=e401]:
+                        - generic [ref=e403]: R$
+                        - generic [ref=e404]: "490"
+                        - generic [ref=e405]: ","
+                        - generic [ref=e406]: "75"
+                      - text: sem juros
+                  - generic [ref=e409]:
+                    - img [ref=e410]
+                    - text: Cupom
+                    - img "25 reais" [ref=e412]:
+                      - generic [ref=e414]: R$
+                      - generic [ref=e415]: "25"
+                    - text: "OFF"
+                  - img [ref=e417]
+                  - generic [ref=e419]: Internacional
+                  - generic [ref=e420]: Frete grátis
+                - switch "Favorito" [ref=e422] [cursor=pointer]:
+                  - img [ref=e423]
+            - listitem [ref=e425]:
+              - generic [ref=e427]:
+                - img [ref=e429]
+                - generic [ref=e430]:
+                  - heading "Aspirador Dyson V15 Detect Extra Sem Fio 10 Acessórios" [level=3] [ref=e431]:
+                    - link "Aspirador Dyson V15 Detect Extra Sem Fio 10 Acessórios" [ref=e432] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/dyson-v15-detect-cordless-vacuum-10-acc-yellownickel/p/MLB2076193652#polycard_client=search-desktop&search_layout=grid&position=3&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6287529168&sid=search
+                  - generic [ref=e433]:
+                    - img "5072 reais" [ref=e435]:
+                      - generic [ref=e436]: R$
+                      - generic [ref=e437]: "5.072"
+                    - generic [ref=e438]:
+                      - text: 12x
+                      - img "487 reais com 57 centavos" [ref=e439]:
+                        - generic [ref=e441]: R$
+                        - generic [ref=e442]: "487"
+                        - generic [ref=e443]: ","
+                        - generic [ref=e444]: "57"
+                  - generic [ref=e447]:
+                    - img [ref=e448]
+                    - text: Cupom 8% OFF
+                  - img [ref=e451]
+                  - generic [ref=e453]: Internacional
+                  - generic [ref=e454]: Frete grátis
+                - switch "Favorito" [ref=e456] [cursor=pointer]:
+                  - img [ref=e457]
+            - listitem [ref=e459]:
+              - generic [ref=e461]:
+                - img [ref=e463]
+                - generic [ref=e464]:
+                  - heading "Aspirador De Pó Dyson V15s Detect Submarine Lava Pisos Duro Cor Amarelo/níquel" [level=3] [ref=e465]:
+                    - link "Aspirador De Pó Dyson V15s Detect Submarine Lava Pisos Duro Cor Amarelo/níquel" [ref=e466] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-de-po-dyson-v15s-detect-submarine-lava-pisos-duro-cor-amareloniquel/p/MLB42124178#polycard_client=search-desktop&search_layout=grid&position=4&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6069625624&sid=search
+                  - generic [ref=e467]:
+                    - img "21202 reais" [ref=e469]:
+                      - generic [ref=e470]: R$
+                      - generic [ref=e471]: "21.202"
+                    - generic [ref=e472]:
+                      - text: 12x
+                      - img "2037 reais" [ref=e473]:
+                        - generic [ref=e475]: R$
+                        - generic [ref=e476]: "2.037"
+                  - generic [ref=e477]: Frete grátis
+                - switch "Favorito" [ref=e479] [cursor=pointer]:
+                  - img [ref=e480]
+            - listitem [ref=e482]:
+              - generic [ref=e484]:
+                - img [ref=e486]
+                - generic [ref=e487]:
+                  - heading "Aspirador De Pó Dyson V15 Detect Amarelo/níquel" [level=3] [ref=e488]:
+                    - link "Aspirador De Pó Dyson V15 Detect Amarelo/níquel" [ref=e489] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/dyson-v15-detect-cordless-vacuum-10-accessories-yellowni/p/MLB2057436747#polycard_client=search-desktop&search_layout=grid&position=5&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB3721537625&sid=search
+                  - generic [ref=e490]:
+                    - 'img "Antes: 6639 reais" [ref=e491]':
+                      - generic [ref=e492]: R$
+                      - generic [ref=e493]: "6.639"
+                    - generic [ref=e494]:
+                      - 'img "Agora: 5311 reais" [ref=e495]':
+                        - generic [ref=e496]: R$
+                        - generic [ref=e497]: "5.311"
+                      - generic [ref=e498]: 19% OFF
+                    - generic [ref=e499]:
+                      - text: 10x
+                      - img "531 reais com 15 centavos" [ref=e500]:
+                        - generic [ref=e502]: R$
+                        - generic [ref=e503]: "531"
+                        - generic [ref=e504]: ","
+                        - generic [ref=e505]: "15"
+                      - text: sem juros
+                  - generic [ref=e508]:
+                    - img [ref=e509]
+                    - text: Cupom
+                    - img "25 reais" [ref=e511]:
+                      - generic [ref=e513]: R$
+                      - generic [ref=e514]: "25"
+                    - text: "OFF"
+                  - img [ref=e516]
+                  - generic [ref=e518]: Internacional
+                  - generic [ref=e519]: Frete grátis
+                - switch "Favorito" [ref=e521] [cursor=pointer]:
+                  - img [ref=e522]
+            - listitem [ref=e524]:
+              - generic [ref=e526]:
+                - img [ref=e528]
+                - generic [ref=e529]:
+                  - heading "Aspirador De Pó Dyson V15s Detect Submarine Lava Pisos Duro" [level=3] [ref=e530]:
+                    - link "Aspirador De Pó Dyson V15s Detect Submarine Lava Pisos Duro" [ref=e531] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-de-po-dyson-v15s-detect-submarine-lava-pisos-duro/up/MLBU3301434439#polycard_client=search-desktop&search_layout=grid&position=6&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4129342159&sid=search
+                  - generic [ref=e532]:
+                    - img "23782 reais" [ref=e534]:
+                      - generic [ref=e535]: R$
+                      - generic [ref=e536]: "23.782"
+                    - generic [ref=e537]:
+                      - text: 10x
+                      - img "2378 reais" [ref=e538]:
+                        - generic [ref=e540]: R$
+                        - generic [ref=e541]: "2.378"
+                      - text: sem juros
+                  - generic [ref=e542]: Frete grátis
+                - switch "Favorito" [ref=e544] [cursor=pointer]:
+                  - img [ref=e545]
+            - listitem [ref=e547]:
+              - generic [ref=e549]:
+                - img [ref=e551]
+                - generic [ref=e552]:
+                  - heading "Aspirador De Pó Dyson V15 Sem Fio C/laser Importado Com Nf" [level=3] [ref=e553]:
+                    - link "Aspirador De Pó Dyson V15 Sem Fio C/laser Importado Com Nf" [ref=e554] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-de-po-dyson-v15-sem-fio-claser-importado-com-nf/up/MLBU3326271510#polycard_client=search-desktop&search_layout=grid&position=7&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4136449743&sid=search
+                  - generic [ref=e555]:
+                    - img "15802 reais" [ref=e557]:
+                      - generic [ref=e558]: R$
+                      - generic [ref=e559]: "15.802"
+                    - generic [ref=e560]:
+                      - text: 10x
+                      - img "1580 reais" [ref=e561]:
+                        - generic [ref=e563]: R$
+                        - generic [ref=e564]: "1.580"
+                      - text: sem juros
+                  - generic [ref=e565]: Frete grátis
+                - switch "Favorito" [ref=e567] [cursor=pointer]:
+                  - img [ref=e568]
+            - listitem [ref=e570]:
+              - generic [ref=e572]:
+                - img [ref=e574]
+                - generic [ref=e575]:
+                  - heading "Aspirador De Pó Dyson V15 S/fio Com Laser Importado Com Nf" [level=3] [ref=e576]:
+                    - link "Aspirador De Pó Dyson V15 S/fio Com Laser Importado Com Nf" [ref=e577] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-de-po-dyson-v15-sfio-com-laser-importado--com-nf/up/MLBU3326271538#polycard_client=search-desktop&search_layout=grid&position=8&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB5521674274&sid=search
+                  - generic [ref=e578]:
+                    - img "14900 reais" [ref=e580]:
+                      - generic [ref=e581]: R$
+                      - generic [ref=e582]: "14.900"
+                    - generic [ref=e583]:
+                      - text: 12x
+                      - img "1432 reais" [ref=e584]:
+                        - generic [ref=e586]: R$
+                        - generic [ref=e587]: "1.432"
+                  - generic [ref=e588]: Frete grátis
+                - switch "Favorito" [ref=e590] [cursor=pointer]:
+                  - img [ref=e591]
+            - listitem [ref=e593]:
+              - generic [ref=e595]:
+                - img [ref=e597]
+                - generic [ref=e598]:
+                  - heading "Aspirador portátil sem fio vertical amarelo Dyson V15 Detect Complete Extra 0,77 l" [level=3] [ref=e599]:
+                    - link "Aspirador portátil sem fio vertical amarelo Dyson V15 Detect Complete Extra 0,77 l" [ref=e600] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-portatil-sem-fio-vertical-amarelo-dyson-v15-detect-complete-extra-077-l/p/MLB24357176#polycard_client=search-desktop&search_layout=grid&position=9&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB5830846644&sid=search
+                  - generic [ref=e601]:
+                    - img "11599 reais" [ref=e603]:
+                      - generic [ref=e604]: R$
+                      - generic [ref=e605]: "11.599"
+                    - generic [ref=e606]:
+                      - text: 12x
+                      - img "1114 reais" [ref=e607]:
+                        - generic [ref=e609]: R$
+                        - generic [ref=e610]: "1.114"
+                  - generic [ref=e611]: Frete grátis
+                  - generic [ref=e612]:
+                    - generic [ref=e613] [cursor=pointer]: Outra opção de compra
+                    - link "12256 reais 10x 1225 reais sem juros" [ref=e614] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-portatil-sem-fio-vertical-amarelo-dyson-v15-detect-complete-extra-077-l/p/MLB24357176?offer_type=BEST_INSTALLMENTS#wid=MLB4411466723&sid=search
+                      - generic [ref=e615]:
+                        - img "12256 reais" [ref=e617]:
+                          - generic [ref=e618]: R$
+                          - generic [ref=e619]: "12.256"
+                        - generic [ref=e620]:
+                          - text: 10x
+                          - img "1225 reais" [ref=e621]:
+                            - generic [ref=e623]: R$
+                            - generic [ref=e624]: "1.225"
+                          - text: sem juros
+                - switch "Favorito" [ref=e626] [cursor=pointer]:
+                  - img [ref=e627]
+            - listitem [ref=e629]:
+              - generic [ref=e631]:
+                - img [ref=e633]
+                - generic [ref=e634]:
+                  - heading "Aspiradora Inalámbrica Dyson V15 Detect Plus, 240aw, 60 Minu" [level=3] [ref=e635]:
+                    - link "Aspiradora Inalámbrica Dyson V15 Detect Plus, 240aw, 60 Minu" [ref=e636] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspiradora-inalambrica-dyson-v15-detect-plus-240aw-bateria/p/MLB2058158961#polycard_client=search-desktop&search_layout=grid&position=10&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4484474591&sid=search
+                  - generic [ref=e637]:
+                    - img "5917 reais" [ref=e639]:
+                      - generic [ref=e640]: R$
+                      - generic [ref=e641]: "5.917"
+                    - generic [ref=e642]:
+                      - text: 12x
+                      - img "568 reais com 75 centavos" [ref=e643]:
+                        - generic [ref=e645]: R$
+                        - generic [ref=e646]: "568"
+                        - generic [ref=e647]: ","
+                        - generic [ref=e648]: "75"
+                  - generic [ref=e651]:
+                    - img [ref=e652]
+                    - text: Cupom 8% OFF
+                  - img [ref=e655]
+                  - generic [ref=e657]: Internacional
+                  - generic [ref=e658]: Frete grátis
+                - switch "Favorito" [ref=e660] [cursor=pointer]:
+                  - img [ref=e661]
+            - listitem [ref=e663]:
+              - generic [ref=e665]:
+                - img [ref=e667]
+                - generic [ref=e668]:
+                  - heading "Aspirador Dyson V15 Detecta A Vácuo Sem Fio Com Laser" [level=3] [ref=e669]:
+                    - link "Aspirador Dyson V15 Detecta A Vácuo Sem Fio Com Laser" [ref=e670] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-dyson-v15-detecta-a-vacuo-sem-fio-com-laser/up/MLBU1430268152#polycard_client=search-desktop&search_layout=grid&position=11&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB2786540832&sid=search
+                  - generic [ref=e671]:
+                    - img "12256 reais" [ref=e673]:
+                      - generic [ref=e674]: R$
+                      - generic [ref=e675]: "12.256"
+                    - generic [ref=e676]:
+                      - text: 10x
+                      - img "1225 reais" [ref=e677]:
+                        - generic [ref=e679]: R$
+                        - generic [ref=e680]: "1.225"
+                      - text: sem juros
+                  - generic [ref=e681]: Frete grátis
+                  - generic [ref=e682]:
+                    - generic [ref=e683] [cursor=pointer]: Outra opção de compra
+                    - link "11860 reais Melhor preço" [ref=e684] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-dyson-v15-detecta-a-vacuo-sem-fio-com-laser/up/MLBU1430268152?offer_type=BEST_PRICE#wid=MLB2786498745&sid=search
+                      - generic [ref=e685]:
+                        - img "11860 reais" [ref=e687]:
+                          - generic [ref=e688]: R$
+                          - generic [ref=e689]: "11.860"
+                        - generic [ref=e690]: Melhor preço
+                - switch "Favorito" [ref=e692] [cursor=pointer]:
+                  - img [ref=e693]
+            - listitem [ref=e695]:
+              - generic [ref=e697]:
+                - img [ref=e699]
+                - generic [ref=e700]:
+                  - heading "Aspirador Dyson V15 Detect Fluffy Grey" [level=3] [ref=e701]:
+                    - link "Aspirador Dyson V15 Detect Fluffy Grey" [ref=e702] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-dyson-v15-detect-fluffy-grey/p/MLB65085646#polycard_client=search-desktop&search_layout=grid&position=12&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=&sid=search
+                  - img "8980 reais" [ref=e705]:
+                    - generic [ref=e706]: R$
+                    - generic [ref=e707]: "8.980"
+                  - link "1 opção de compra" [ref=e708] [cursor=pointer]:
+                    - /url: https://www.mercadolivre.com.br/aspirador-dyson-v15-detect-fluffy-grey/p/MLB65085646
+                - switch "Favorito" [ref=e710] [cursor=pointer]:
+                  - img [ref=e711]
+            - listitem [ref=e713]:
+              - generic [ref=e715]:
+                - img [ref=e717]
+                - generic [ref=e718]:
+                  - heading "Adaptador Inferior Para Liberações Rápidas V7 V8 V10 V11 K" [level=3] [ref=e719]:
+                    - link "Adaptador Inferior Para Liberações Rápidas V7 V8 V10 V11 K" [ref=e720] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/adaptador-inferior-para-v7-v8-v10-v11-v15-quick-releas/p/MLB2025122320#polycard_client=search-desktop&search_layout=grid&position=13&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB5995190868&sid=search
+                  - generic [ref=e721]:
+                    - img "64 reais com 64 centavos" [ref=e723]:
+                      - generic [ref=e724]: R$
+                      - generic [ref=e725]: "64"
+                      - generic [ref=e726]: ","
+                      - generic [ref=e727]: "64"
+                    - generic [ref=e728]:
+                      - text: 3x
+                      - img "21 reais com 55 centavos" [ref=e729]:
+                        - generic [ref=e731]: R$
+                        - generic [ref=e732]: "21"
+                        - generic [ref=e733]: ","
+                        - generic [ref=e734]: "55"
+                      - text: sem juros
+                  - img [ref=e736]
+                  - generic [ref=e738]: Internacional
+                - switch "Favorito" [ref=e740] [cursor=pointer]:
+                  - img [ref=e741]
+            - listitem [ref=e743]:
+              - generic [ref=e745]:
+                - img [ref=e747]
+                - generic [ref=e748]:
+                  - heading "Escova De Rolo De Cabeça De Piso Para Dyson V7 V8 V10 V11 As" [level=3] [ref=e749]:
+                    - link "Escova De Rolo De Cabeça De Piso Para Dyson V7 V8 V10 V11 As" [ref=e750] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/floor-brush-head-fluffy-electric-for-dyson-v7-v8-v10-v11-v15/p/MLB2062379406#polycard_client=search-desktop&search_layout=grid&position=14&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4416151127&sid=search
+                  - img "167 reais com 31 centavos" [ref=e753]:
+                    - generic [ref=e754]: R$
+                    - generic [ref=e755]: "167"
+                    - generic [ref=e756]: ","
+                    - generic [ref=e757]: "31"
+                  - img [ref=e759]
+                  - generic [ref=e761]: Internacional
+                  - generic [ref=e762]: Frete grátis
+                - switch "Favorito" [ref=e764] [cursor=pointer]:
+                  - img [ref=e765]
+            - listitem [ref=e767]:
+              - generic [ref=e769]:
+                - img [ref=e771]
+                - generic [ref=e772]:
+                  - heading "Cabezal De Limpieza De Alto Par Mejorado Para Aspiradora Ina" [level=3] [ref=e773]:
+                    - link "Cabezal De Limpieza De Alto Par Mejorado Para Aspiradora Ina" [ref=e774] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/for-v7-v8-v10-v11-v15-cordless-vacuum-cleaners-quick-releas/p/MLB2023199260#polycard_client=search-desktop&search_layout=grid&position=15&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6459462698&sid=search
+                  - generic [ref=e775]:
+                    - img "520 reais com 88 centavos" [ref=e777]:
+                      - generic [ref=e778]: R$
+                      - generic [ref=e779]: "520"
+                      - generic [ref=e780]: ","
+                      - generic [ref=e781]: "88"
+                    - generic [ref=e782]:
+                      - text: 12x
+                      - img "50 reais com 37 centavos" [ref=e783]:
+                        - generic [ref=e785]: R$
+                        - generic [ref=e786]: "50"
+                        - generic [ref=e787]: ","
+                        - generic [ref=e788]: "37"
+                  - img [ref=e790]
+                  - generic [ref=e792]: Internacional
+                  - generic [ref=e793]: Frete grátis
+                - switch "Favorito" [ref=e795] [cursor=pointer]:
+                  - img [ref=e796]
+            - listitem [ref=e798]:
+              - generic [ref=e800]:
+                - img [ref=e802]
+                - generic [ref=e803]:
+                  - heading "Anel De Vedação De Lixeira 970422 Adequado Para V11 V15 Gen" [level=3] [ref=e804]:
+                    - link "Anel De Vedação De Lixeira 970422 Adequado Para V11 V15 Gen" [ref=e805] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/para-aspiradora-dyson-v11-sv14-sv15-cubo-de-polvo-superior/p/MLB2032332367#polycard_client=search-desktop&search_layout=grid&position=16&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4468548897&sid=search
+                  - img "50 reais com 33 centavos" [ref=e808]:
+                    - generic [ref=e809]: R$
+                    - generic [ref=e810]: "50"
+                    - generic [ref=e811]: ","
+                    - generic [ref=e812]: "33"
+                  - img [ref=e814]
+                  - generic [ref=e816]: Internacional
+                - switch "Favorito" [ref=e818] [cursor=pointer]:
+                  - img [ref=e819]
+            - listitem [ref=e821]:
+              - generic [ref=e823]:
+                - img [ref=e825]
+                - generic [ref=e826]:
+                  - heading "Atualização Do Limpador Motorhead Anti-tangle Para Dyson V7-" [level=3] [ref=e827]:
+                    - link "Atualização Do Limpador Motorhead Anti-tangle Para Dyson V7-" [ref=e828] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/motorhead-cleaner-upgrade-anti-tangle-for-dyson-v7-v15/p/MLB2057408221#polycard_client=search-desktop&search_layout=grid&position=17&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6448671044&sid=search
+                  - generic [ref=e829]:
+                    - text: nocnoc USA
+                    - img "Loja oficial" [ref=e830]
+                  - generic [ref=e832]:
+                    - 'img "Antes: 484 reais com 17 centavos" [ref=e833]':
+                      - generic [ref=e834]: R$
+                      - generic [ref=e835]: "484"
+                      - generic [ref=e836]: ","
+                      - generic [ref=e837]: "17"
+                    - generic [ref=e838]:
+                      - 'img "Agora: 411 reais com 50 centavos" [ref=e839]':
+                        - generic [ref=e840]: R$
+                        - generic [ref=e841]: "411"
+                        - generic [ref=e842]: ","
+                        - generic [ref=e843]: "50"
+                      - generic [ref=e844]: 15% OFF
+                    - generic [ref=e845]:
+                      - text: 12x
+                      - img "39 reais com 79 centavos" [ref=e846]:
+                        - generic [ref=e848]: R$
+                        - generic [ref=e849]: "39"
+                        - generic [ref=e850]: ","
+                        - generic [ref=e851]: "79"
+                  - img [ref=e853]
+                  - generic [ref=e855]: Internacional
+                  - generic [ref=e856]: Frete grátis
+                - switch "Favorito" [ref=e858] [cursor=pointer]:
+                  - img [ref=e859]
+            - listitem [ref=e861]:
+              - generic [ref=e863]:
+                - img [ref=e865]
+                - generic [ref=e866]:
+                  - heading "Aspirador Sem Fio Dyson V15s Detect Submarine Amarelo" [level=3] [ref=e867]:
+                    - link "Aspirador Sem Fio Dyson V15s Detect Submarine Amarelo" [ref=e868] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/vacuum-cleaner-dyson-v15s-detect-submarine-bagless-yellow/p/MLB2059999689#polycard_client=search-desktop&search_layout=grid&position=18&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6288022828&sid=search
+                  - generic [ref=e869]:
+                    - img "8142 reais" [ref=e871]:
+                      - generic [ref=e872]: R$
+                      - generic [ref=e873]: "8.142"
+                    - generic [ref=e874]:
+                      - text: 12x
+                      - img "782 reais com 67 centavos" [ref=e875]:
+                        - generic [ref=e877]: R$
+                        - generic [ref=e878]: "782"
+                        - generic [ref=e879]: ","
+                        - generic [ref=e880]: "67"
+                  - generic [ref=e883]:
+                    - img [ref=e884]
+                    - text: Cupom 8% OFF
+                  - img [ref=e887]
+                  - generic [ref=e889]: Internacional
+                  - generic [ref=e890]: Frete grátis
+                - switch "Favorito" [ref=e892] [cursor=pointer]:
+                  - img [ref=e893]
+            - listitem [ref=e895]:
+              - generic [ref=e897]:
+                - img [ref=e899]
+                - generic [ref=e900]:
+                  - heading "Q Para Aspiradoras Dysons V10 Digital Slim V12 Detect Slim" [level=3] [ref=e901]:
+                    - link "Q Para Aspiradoras Dysons V10 Digital Slim V12 Detect Slim" [ref=e902] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/plq-for-dysons-v10-digital-slim-v12-detect-slim-vacuum/p/MLB2068629118#polycard_client=search-desktop&search_layout=grid&position=19&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4475990913&sid=search
+                  - generic [ref=e903]:
+                    - img "358 reais com 62 centavos" [ref=e905]:
+                      - generic [ref=e906]: R$
+                      - generic [ref=e907]: "358"
+                      - generic [ref=e908]: ","
+                      - generic [ref=e909]: "62"
+                    - generic [ref=e910]:
+                      - text: 7x
+                      - img "51 reais com 23 centavos" [ref=e911]:
+                        - generic [ref=e913]: R$
+                        - generic [ref=e914]: "51"
+                        - generic [ref=e915]: ","
+                        - generic [ref=e916]: "23"
+                      - text: sem juros
+                  - generic [ref=e918]: 20% OFF levando 3
+                  - img [ref=e920]
+                  - generic [ref=e922]: Internacional
+                  - generic [ref=e923]: Frete grátis
+                - switch "Favorito" [ref=e925] [cursor=pointer]:
+                  - img [ref=e926]
+            - listitem [ref=e928]:
+              - generic [ref=e930]:
+                - img [ref=e932]
+                - generic [ref=e933]:
+                  - heading "Adaptador Inferior Para V7 V8 V10 V11 V15 Quick Releases" [level=3] [ref=e934]:
+                    - link "Adaptador Inferior Para V7 V8 V10 V11 V15 Quick Releases" [ref=e935] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/-adaptador-inferior-para-dyson-v7-v8-v10-v11-v15-quick-au/p/MLB2044882319#polycard_client=search-desktop&search_layout=grid&position=20&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4288983323&sid=search
+                  - generic [ref=e936]:
+                    - img "58 reais com 36 centavos" [ref=e938]:
+                      - generic [ref=e939]: R$
+                      - generic [ref=e940]: "58"
+                      - generic [ref=e941]: ","
+                      - generic [ref=e942]: "36"
+                    - generic [ref=e943]:
+                      - text: 2x
+                      - img "29 reais com 18 centavos" [ref=e944]:
+                        - generic [ref=e946]: R$
+                        - generic [ref=e947]: "29"
+                        - generic [ref=e948]: ","
+                        - generic [ref=e949]: "18"
+                      - text: sem juros
+                  - img [ref=e951]
+                  - generic [ref=e953]: Internacional
+                - switch "Favorito" [ref=e955] [cursor=pointer]:
+                  - img [ref=e956]
+            - listitem [ref=e958]:
+              - generic [ref=e960]:
+                - img [ref=e962]
+                - generic [ref=e963]:
+                  - heading "Suporte De Vácuo Brightshow Para Dyson V15 V11 V10 V8 V7 V6," [level=3] [ref=e964]:
+                    - link "Suporte De Vácuo Brightshow Para Dyson V15 V11 V10 V8 V7 V6," [ref=e965] [cursor=pointer]:
+                      - /url: https://produto.mercadolivre.com.br/MLB-5291785752-suporte-de-vacuo-brightshow-para-dyson-v15-v11-v10-v8-v7-v6-_JM#polycard_client=search-desktop&search_layout=grid&position=21&type=item&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea
+                  - generic [ref=e966]:
+                    - img "427 reais com 25 centavos" [ref=e968]:
+                      - generic [ref=e969]: R$
+                      - generic [ref=e970]: "427"
+                      - generic [ref=e971]: ","
+                      - generic [ref=e972]: "25"
+                    - generic [ref=e973]:
+                      - text: 12x
+                      - img "41 reais com 32 centavos" [ref=e974]:
+                        - generic [ref=e976]: R$
+                        - generic [ref=e977]: "41"
+                        - generic [ref=e978]: ","
+                        - generic [ref=e979]: "32"
+                  - img [ref=e981]
+                  - generic [ref=e983]: Internacional
+                  - generic [ref=e984]: Frete grátis
+                - switch "Favorito" [ref=e986] [cursor=pointer]:
+                  - img [ref=e987]
+            - listitem [ref=e989]:
+              - generic [ref=e991]:
+                - generic [ref=e992]:
+                  - generic:
+                    - generic: Disponível em 2 cores
+                  - img [ref=e993]
+                - generic [ref=e994]:
+                  - heading "Bateria Batryuic 6500mah 22,2 V Tipo B Para Aspirador Portát" [level=3] [ref=e995]:
+                    - link "Bateria Batryuic 6500mah 22,2 V Tipo B Para Aspirador Portát" [ref=e996] [cursor=pointer]:
+                      - /url: https://produto.mercadolivre.com.br/MLB-6193169062-bateria-batryuic-6500mah-222-v-tipo-b-para-aspirador-portat-_JM?searchVariation=197029196677#polycard_client=search-desktop&searchVariation=197029196677&search_layout=grid&position=22&type=item&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea
+                  - generic [ref=e997]:
+                    - img "421 reais com 40 centavos" [ref=e999]:
+                      - generic [ref=e1000]: R$
+                      - generic [ref=e1001]: "421"
+                      - generic [ref=e1002]: ","
+                      - generic [ref=e1003]: "40"
+                    - generic [ref=e1004]:
+                      - text: 8x
+                      - img "52 reais com 68 centavos" [ref=e1005]:
+                        - generic [ref=e1007]: R$
+                        - generic [ref=e1008]: "52"
+                        - generic [ref=e1009]: ","
+                        - generic [ref=e1010]: "68"
+                      - text: sem juros
+                  - img [ref=e1012]
+                  - generic [ref=e1014]: Internacional
+                  - generic [ref=e1015]: Frete grátis
+                - switch "Favorito" [ref=e1017] [cursor=pointer]:
+                  - img [ref=e1018]
+            - listitem [ref=e1020]:
+              - generic [ref=e1022]:
+                - img [ref=e1024]
+                - generic [ref=e1025]:
+                  - heading "2026 Adaptador Inferior Q Para Liberações Rápidas V7 V8 V10" [level=3] [ref=e1026]:
+                    - link "2026 Adaptador Inferior Q Para Liberações Rápidas V7 V8 V10" [ref=e1027] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/-adaptador-inferior-para-dyson-v7-v8-v10-v11-v15-quick-bb/p/MLB2039866703#polycard_client=search-desktop&search_layout=grid&position=23&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4504614065&sid=search
+                  - generic [ref=e1028]:
+                    - 'img "Antes: 60 reais com 33 centavos" [ref=e1029]':
+                      - generic [ref=e1030]: R$
+                      - generic [ref=e1031]: "60"
+                      - generic [ref=e1032]: ","
+                      - generic [ref=e1033]: "33"
+                    - generic [ref=e1034]:
+                      - 'img "Agora: 57 reais com 30 centavos" [ref=e1035]':
+                        - generic [ref=e1036]: R$
+                        - generic [ref=e1037]: "57"
+                        - generic [ref=e1038]: ","
+                        - generic [ref=e1039]: "30"
+                      - generic [ref=e1040]: 5% OFF
+                    - generic [ref=e1041]:
+                      - text: 2x
+                      - img "28 reais com 65 centavos" [ref=e1042]:
+                        - generic [ref=e1044]: R$
+                        - generic [ref=e1045]: "28"
+                        - generic [ref=e1046]: ","
+                        - generic [ref=e1047]: "65"
+                      - text: sem juros
+                  - img [ref=e1049]
+                  - generic [ref=e1051]: Internacional
+                - switch "Favorito" [ref=e1053] [cursor=pointer]:
+                  - img [ref=e1054]
+            - listitem [ref=e1056]:
+              - generic [ref=e1058]:
+                - img [ref=e1060]
+                - generic [ref=e1061]:
+                  - heading "Peças De Reposição Para Dyson Digital Slim V8 Slim V12 V15" [level=3] [ref=e1062]:
+                    - link "Peças De Reposição Para Dyson Digital Slim V8 Slim V12 V15" [ref=e1063] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/pecas-de-reposico-para-dyson-digital-slim-v8-slim-v12-v15/p/MLB2063817985#polycard_client=search-desktop&search_layout=grid&position=24&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB5334386312&sid=search
+                  - generic [ref=e1064]:
+                    - img "77 reais com 57 centavos" [ref=e1066]:
+                      - generic [ref=e1067]: R$
+                      - generic [ref=e1068]: "77"
+                      - generic [ref=e1069]: ","
+                      - generic [ref=e1070]: "57"
+                    - generic [ref=e1071]:
+                      - text: 3x
+                      - img "25 reais com 86 centavos" [ref=e1072]:
+                        - generic [ref=e1074]: R$
+                        - generic [ref=e1075]: "25"
+                        - generic [ref=e1076]: ","
+                        - generic [ref=e1077]: "86"
+                      - text: sem juros
+                  - img [ref=e1079]
+                  - generic [ref=e1081]: Internacional
+                - switch "Favorito" [ref=e1083] [cursor=pointer]:
+                  - img [ref=e1084]
+            - listitem [ref=e1086]:
+              - generic [ref=e1088]:
+                - img [ref=e1090]
+                - generic [ref=e1091]:
+                  - heading "Aspirador De Pó Dyson Gen5outside Detect Sem Fio Importado" [level=3] [ref=e1092]:
+                    - link "Aspirador De Pó Dyson Gen5outside Detect Sem Fio Importado" [ref=e1093] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-de-po-dyson-gen5outside-detect-sem-fio-importado/up/MLBU3808480434#polycard_client=search-desktop&search_layout=grid&position=25&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6288205992&sid=search
+                  - generic [ref=e1094]:
+                    - img "9500 reais" [ref=e1096]:
+                      - generic [ref=e1097]: R$
+                      - generic [ref=e1098]: "9.500"
+                    - generic [ref=e1099]:
+                      - text: 12x
+                      - img "913 reais com 11 centavos" [ref=e1100]:
+                        - generic [ref=e1102]: R$
+                        - generic [ref=e1103]: "913"
+                        - generic [ref=e1104]: ","
+                        - generic [ref=e1105]: "11"
+                  - generic [ref=e1106]: Frete grátis
+                  - generic [ref=e1107]:
+                    - generic [ref=e1108] [cursor=pointer]: Outra opção de compra
+                    - link "10200 reais 10x 1020 reais sem juros" [ref=e1109] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/aspirador-de-po-dyson-gen5outside-detect-sem-fio-importado/up/MLBU3808480434?offer_type=BEST_INSTALLMENTS#wid=MLB6288426064&sid=search
+                      - generic [ref=e1110]:
+                        - img "10200 reais" [ref=e1112]:
+                          - generic [ref=e1113]: R$
+                          - generic [ref=e1114]: "10.200"
+                        - generic [ref=e1115]:
+                          - text: 10x
+                          - img "1020 reais" [ref=e1116]:
+                            - generic [ref=e1118]: R$
+                            - generic [ref=e1119]: "1.020"
+                          - text: sem juros
+                - switch "Favorito" [ref=e1121] [cursor=pointer]:
+                  - img [ref=e1122]
+            - listitem [ref=e1124]:
+              - generic [ref=e1126]:
+                - img [ref=e1128]
+                - generic [ref=e1129]:
+                  - heading "Mm/ Filtros De Substituição Para Dyson V11 V15 Sv14" [level=3] [ref=e1130]:
+                    - link "Mm/ Filtros De Substituição Para Dyson V11 V15 Sv14" [ref=e1131] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/filtros-de-repuesto-para-dyson-v11-v15-sv14-absolute-animal/p/MLB2023199762#polycard_client=search-desktop&search_layout=grid&position=26&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB4356967575&sid=search
+                  - generic [ref=e1132]:
+                    - img "58 reais com 68 centavos" [ref=e1134]:
+                      - generic [ref=e1135]: R$
+                      - generic [ref=e1136]: "58"
+                      - generic [ref=e1137]: ","
+                      - generic [ref=e1138]: "68"
+                    - generic [ref=e1139]:
+                      - text: 2x
+                      - img "29 reais com 34 centavos" [ref=e1140]:
+                        - generic [ref=e1142]: R$
+                        - generic [ref=e1143]: "29"
+                        - generic [ref=e1144]: ","
+                        - generic [ref=e1145]: "34"
+                      - text: sem juros
+                  - img [ref=e1147]
+                  - generic [ref=e1149]: Internacional
+                - switch "Favorito" [ref=e1151] [cursor=pointer]:
+                  - img [ref=e1152]
+            - listitem [ref=e1154]:
+              - generic [ref=e1156]:
+                - img [ref=e1158]
+                - generic [ref=e1159]:
+                  - heading "Filtros De Substituição Para Dyson V11 V15 Sv14 Absolute." [level=3] [ref=e1160]:
+                    - link "Filtros De Substituição Para Dyson V11 V15 Sv14 Absolute." [ref=e1161] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/filtros-de-substituico-para-dyson-v11-v15-sv14-absolute/p/MLB2054662196#polycard_client=search-desktop&search_layout=grid&position=27&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6025503284&sid=search
+                  - generic [ref=e1162]:
+                    - img "63 reais com 15 centavos" [ref=e1164]:
+                      - generic [ref=e1165]: R$
+                      - generic [ref=e1166]: "63"
+                      - generic [ref=e1167]: ","
+                      - generic [ref=e1168]: "15"
+                    - generic [ref=e1169]:
+                      - text: 3x
+                      - img "21 reais com 05 centavos" [ref=e1170]:
+                        - generic [ref=e1172]: R$
+                        - generic [ref=e1173]: "21"
+                        - generic [ref=e1174]: ","
+                        - generic [ref=e1175]: "05"
+                      - text: sem juros
+                  - img [ref=e1177]
+                  - generic [ref=e1179]: Internacional
+                - switch "Favorito" [ref=e1181] [cursor=pointer]:
+                  - img [ref=e1182]
+            - listitem [ref=e1184]:
+              - generic [ref=e1186]:
+                - img [ref=e1188]
+                - generic [ref=e1189]:
+                  - heading "Acessórios Para Aspirador De Pó Dyson V7 V8 V8 V11 V15 Pet" [level=3] [ref=e1190]:
+                    - link "Acessórios Para Aspirador De Pó Dyson V7 V8 V8 V11 V15 Pet" [ref=e1191] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/for-dyson-v7-v8-v8-v11-v15-vacuum-cleaner-accessories-pet-co/p/MLB2025040214#polycard_client=search-desktop&search_layout=grid&position=28&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6073239708&sid=search
+                  - generic [ref=e1192]:
+                    - 'img "Antes: 97 reais com 73 centavos" [ref=e1193]':
+                      - generic [ref=e1194]: R$
+                      - generic [ref=e1195]: "97"
+                      - generic [ref=e1196]: ","
+                      - generic [ref=e1197]: "73"
+                    - generic [ref=e1198]:
+                      - 'img "Agora: 74 reais com 80 centavos" [ref=e1199]':
+                        - generic [ref=e1200]: R$
+                        - generic [ref=e1201]: "74"
+                        - generic [ref=e1202]: ","
+                        - generic [ref=e1203]: "80"
+                      - generic [ref=e1204]: 23% OFF
+                    - generic [ref=e1205]:
+                      - text: 3x
+                      - img "24 reais com 93 centavos" [ref=e1206]:
+                        - generic [ref=e1208]: R$
+                        - generic [ref=e1209]: "24"
+                        - generic [ref=e1210]: ","
+                        - generic [ref=e1211]: "93"
+                      - text: sem juros
+                  - img [ref=e1213]
+                  - generic [ref=e1215]: Internacional
+                - switch "Favorito" [ref=e1217] [cursor=pointer]:
+                  - img [ref=e1218]
+            - listitem [ref=e1220]:
+              - generic [ref=e1222]:
+                - img [ref=e1224]
+                - generic [ref=e1225]:
+                  - heading "Filtros De Substituição Para Dyson V11 V15 Sv14 Absolute. !" [level=3] [ref=e1226]:
+                    - link "Filtros De Substituição Para Dyson V11 V15 Sv14 Absolute. !" [ref=e1227] [cursor=pointer]:
+                      - /url: https://www.mercadolivre.com.br/filtros-de-substituico-para-dyson-v11-v15-sv14-absolute/p/MLB2044977917#polycard_client=search-desktop&search_layout=grid&position=29&type=product&tracking_id=f16a39ff-b4d2-47c0-abe6-acdf316c8aea&wid=MLB6003533086&sid=search
+                  - generic [ref=e1228]:
+                    - img "181 reais com 89 centavos" [ref=e1230]:
+                      - generic [ref=e1231]: R$
+                      - generic [ref=e1232]: "181"
+                      - generic [ref=e1233]: ","
+                      - generic [ref=e1234]: "89"
+                    - generic [ref=e1235]:
+                      - text: 6x
+                      - img "30 reais com 32 centavos" [ref=e1236]:
+                        - generic [ref=e1238]: R$
+                        - generic [ref=e1239]: "30"
+                        - generic [ref=e1240]: ","
+                        - generic [ref=e1241]: "32"
+                      - text: sem juros
+                  - img [ref=e1243]
+                  - generic [ref=e1245]: Internacional
+                  - generic [ref=e1246]: Frete grátis
+                - switch "Favorito" [ref=e1248] [cursor=pointer]:
+                  - img [ref=e1249]
+          - generic [ref=e1252]:
+            - img [ref=e1255]
+            - paragraph [ref=e1260]: O frete grátis está sujeito ao peso, preço e distância do envio.
+      - generic [ref=e1268]:
+        - heading "Destaques em Eletrodomésticos" [level=3] [ref=e1270]
+        - generic [ref=e1271]:
+          - generic [ref=e1272]:
+            - heading "Freezer" [level=4] [ref=e1273]:
+              - link "Freezer" [ref=e1274] [cursor=pointer]:
+                - /url: https://lista.mercadolivre.com.br/freezer#headterms
+            - list [ref=e1275]:
+              - listitem [ref=e1276]:
+                - link "Freezer horizontal" [ref=e1277] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-horizontal#headterms
+              - listitem [ref=e1278]:
+                - link "Freezer horizontal 1 porta" [ref=e1279] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-horizontal-1-porta#headterms
+              - listitem [ref=e1280]:
+                - link "Freezer horizontal 2 portas" [ref=e1281] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-horizontal-2-portas#headterms
+              - listitem [ref=e1282]:
+                - link "Freezer expositor" [ref=e1283] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-expositor#headterms
+              - listitem [ref=e1284]:
+                - link "Freezer de gaveta vertical" [ref=e1285] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-de-gaveta-vertical#headterms
+              - listitem [ref=e1286]:
+                - link "Freezer vertical" [ref=e1287] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-vertical#headterms
+              - listitem [ref=e1288]:
+                - link "Freezer vertical expositor" [ref=e1289] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/freezer-vertical-expositor#headterms
+            - button "Ver tudo" [ref=e1290] [cursor=pointer]:
+              - text: Ver tudo
+              - img [ref=e1291]
+          - generic [ref=e1293]:
+            - heading "Fogão" [level=4] [ref=e1294]:
+              - link "Fogão" [ref=e1295] [cursor=pointer]:
+                - /url: https://lista.mercadolivre.com.br/fogao#headterms
+            - list [ref=e1296]:
+              - listitem [ref=e1297]:
+                - link "Cooktop" [ref=e1298] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop#headterms
+              - listitem [ref=e1299]:
+                - link "Cooktop 2 bocas" [ref=e1300] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop-2-bocas#headterms
+              - listitem [ref=e1301]:
+                - link "Cooktop 4 bocas" [ref=e1302] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop-4-bocas#headterms
+              - listitem [ref=e1303]:
+                - link "Cooktop 5 bocas" [ref=e1304] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop-5-bocas#headterms
+              - listitem [ref=e1305]:
+                - link "Cooktop inducao 2 bocas" [ref=e1306] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop-inducao-2-bocas#headterms
+              - listitem [ref=e1307]:
+                - link "Cooktop inducao 4 bocas" [ref=e1308] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop-inducao-4-bocas#headterms
+              - listitem [ref=e1309]:
+                - link "Cooktop inducao 5 bocas" [ref=e1310] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/cooktop-inducao-5-bocas#headterms
+            - button "Ver tudo" [ref=e1311] [cursor=pointer]:
+              - text: Ver tudo
+              - img [ref=e1312]
+          - generic [ref=e1314]:
+            - heading "Geladeira" [level=4] [ref=e1315]:
+              - link "Geladeira" [ref=e1316] [cursor=pointer]:
+                - /url: https://lista.mercadolivre.com.br/geladeira#headterms
+            - list [ref=e1317]:
+              - listitem [ref=e1318]:
+                - link "Geladeira frost free" [ref=e1319] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-frost-free#headterms
+              - listitem [ref=e1320]:
+                - link "Geladeira inox" [ref=e1321] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-inox#headterms
+              - listitem [ref=e1322]:
+                - link "Geladeira consul" [ref=e1323] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-consul#headterms
+              - listitem [ref=e1324]:
+                - link "Geladeira electrolux" [ref=e1325] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-electrolux#headterms
+              - listitem [ref=e1326]:
+                - link "Geladeira preta" [ref=e1327] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-preta#headterms
+              - listitem [ref=e1328]:
+                - link "Geladeira brastemp" [ref=e1329] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-brastemp#headterms
+              - listitem [ref=e1330]:
+                - link "Geladeira freezer embaixo" [ref=e1331] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/geladeira-freezer-embaixo#headterms
+            - button "Ver tudo" [ref=e1332] [cursor=pointer]:
+              - text: Ver tudo
+              - img [ref=e1333]
+          - generic [ref=e1335]:
+            - heading "Microondas" [level=4] [ref=e1336]:
+              - link "Microondas" [ref=e1337] [cursor=pointer]:
+                - /url: https://lista.mercadolivre.com.br/microondas#headterms
+            - list [ref=e1338]:
+              - listitem [ref=e1339]:
+                - link "Microondas 20 litros" [ref=e1340] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-20-litros#headterms
+              - listitem [ref=e1341]:
+                - link "Microondas 23 litros" [ref=e1342] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-23-litros#headterms
+              - listitem [ref=e1343]:
+                - link "Microondas 28 litros" [ref=e1344] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-28-litros#headterms
+              - listitem [ref=e1345]:
+                - link "Microondas 30 litros" [ref=e1346] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-30-litros#headterms
+              - listitem [ref=e1347]:
+                - link "Microondas 34 litros" [ref=e1348] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-34-litros#headterms
+              - listitem [ref=e1349]:
+                - link "Microondas brastemp" [ref=e1350] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-brastemp#headterms
+              - listitem [ref=e1351]:
+                - link "Microondas eletrolux" [ref=e1352] [cursor=pointer]:
+                  - /url: https://lista.mercadolivre.com.br/microondas-eletrolux#headterms
+            - button "Ver tudo" [ref=e1353] [cursor=pointer]:
+              - text: Ver tudo
+              - img [ref=e1354]
+  - generic [ref=e1358]:
+    - heading "Termos mais procurados" [level=3] [ref=e1359]
+    - list [ref=e1360]:
+      - listitem [ref=e1361]:
+        - link "apple watch" [ref=e1362] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/apple-watch
+        - text: "-"
+      - listitem [ref=e1363]:
+        - link "ar condicionado" [ref=e1364] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/ar-condicionado-inverterr
+        - text: "-"
+      - listitem [ref=e1365]:
+        - link "ar condicionado inverter" [ref=e1366] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/ar-condicionado-inverter
+        - text: "-"
+      - listitem [ref=e1367]:
+        - link "bicicletas" [ref=e1368] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/bicicleta
+        - text: "-"
+      - listitem [ref=e1369]:
+        - link "cafeteira" [ref=e1370] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/cafeteira
+        - text: "-"
+      - listitem [ref=e1371]:
+        - link "carros novos" [ref=e1372] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/veiculos/carros-caminhonetes/catalogo/
+        - text: "-"
+      - listitem [ref=e1373]:
+        - link "computador" [ref=e1374] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/computador
+        - text: "-"
+      - listitem [ref=e1375]:
+        - link "fogao 4 boca" [ref=e1376] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/fogao-4-bocas
+        - text: "-"
+      - listitem [ref=e1377]:
+        - link "fone de ouvido bluetooth" [ref=e1378] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/fone-de-ouvido-bluetooth
+        - text: "-"
+      - listitem [ref=e1379]:
+        - link "freezer vertical" [ref=e1380] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/freezer-vertical
+        - text: "-"
+      - listitem [ref=e1381]:
+        - link "geladeira frost free" [ref=e1382] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/geladeira-frost-free
+        - text: "-"
+      - listitem [ref=e1383]:
+        - link "guarda roupa casal" [ref=e1384] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/guarda-roupa-casal
+        - text: "-"
+      - listitem [ref=e1385]:
+        - link "guarda roupa solteiro" [ref=e1386] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/guarda-roupa-solteiro
+        - text: "-"
+      - listitem [ref=e1387]:
+        - link "ipad" [ref=e1388] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/ipad
+        - text: "-"
+      - listitem [ref=e1389]:
+        - link "iphone" [ref=e1390] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone
+        - text: "-"
+      - listitem [ref=e1391]:
+        - link "iphone 8 plus" [ref=e1392] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-8-plus
+        - text: "-"
+      - listitem [ref=e1393]:
+        - link "iphone 11" [ref=e1394] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-11
+        - text: "-"
+      - listitem [ref=e1395]:
+        - link "iphone 13" [ref=e1396] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-13
+        - text: "-"
+      - listitem [ref=e1397]:
+        - link "iphone 13 pro max" [ref=e1398] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-13-pro-max
+        - text: "-"
+      - listitem [ref=e1399]:
+        - link "iphone 14" [ref=e1400] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-14
+        - text: "-"
+      - listitem [ref=e1401]:
+        - link "iphone 14 pro" [ref=e1402] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-14-pro
+        - text: "-"
+      - listitem [ref=e1403]:
+        - link "iphone 14 pro max" [ref=e1404] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-14-pro-max
+        - text: "-"
+      - listitem [ref=e1405]:
+        - link "iphone 15" [ref=e1406] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-15
+        - text: "-"
+      - listitem [ref=e1407]:
+        - link "iphone 16" [ref=e1408] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-16
+        - text: "-"
+      - listitem [ref=e1409]:
+        - link "iphone 16 plus" [ref=e1410] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-16-plus
+        - text: "-"
+      - listitem [ref=e1411]:
+        - link "iphone 16 pro" [ref=e1412] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-16-pro
+        - text: "-"
+      - listitem [ref=e1413]:
+        - link "iphone 16 pro max" [ref=e1414] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/iphone-16-pro-max
+        - text: "-"
+      - listitem [ref=e1415]:
+        - link "jbl" [ref=e1416] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/jbl
+        - text: "-"
+      - listitem [ref=e1417]:
+        - link "microondas" [ref=e1418] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/microondas
+        - text: "-"
+      - listitem [ref=e1419]:
+        - link "monitor" [ref=e1420] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/monitor
+        - text: "-"
+      - listitem [ref=e1421]:
+        - link "motorola" [ref=e1422] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/motorola
+        - text: "-"
+      - listitem [ref=e1423]:
+        - link "nintendo switch" [ref=e1424] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/nintendo-switch
+        - text: "-"
+      - listitem [ref=e1425]:
+        - link "notebook" [ref=e1426] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/notebook
+        - text: "-"
+      - listitem [ref=e1427]:
+        - link "notebook dell" [ref=e1428] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/notebook-dell
+        - text: "-"
+      - listitem [ref=e1429]:
+        - link "painel para tv" [ref=e1430] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/painel-tv
+        - text: "-"
+      - listitem [ref=e1431]:
+        - link "penteadeira" [ref=e1432] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/penteadeira
+        - text: "-"
+      - listitem [ref=e1433]:
+        - link "poco x5 pro" [ref=e1434] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/poco-x5-pro
+        - text: "-"
+      - listitem [ref=e1435]:
+        - link "ps4" [ref=e1436] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/ps4
+        - text: "-"
+      - listitem [ref=e1437]:
+        - link "ps5" [ref=e1438] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/ps5
+        - text: "-"
+      - listitem [ref=e1439]:
+        - link "redmi note 12" [ref=e1440] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/redmi-note-12
+        - text: "-"
+      - listitem [ref=e1441]:
+        - link "s22 ultra" [ref=e1442] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/s22-ultra
+        - text: "-"
+      - listitem [ref=e1443]:
+        - link "samsung a54" [ref=e1444] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/samsung-a54
+        - text: "-"
+      - listitem [ref=e1445]:
+        - link "samsung s23" [ref=e1446] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/samsung-galaxy-s23
+        - text: "-"
+      - listitem [ref=e1447]:
+        - link "smartwatch" [ref=e1448] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/smartwatch
+        - text: "-"
+      - listitem [ref=e1449]:
+        - link "tablets samsung" [ref=e1450] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/tablets-samsung
+        - text: "-"
+      - listitem [ref=e1451]:
+        - link "tenis masculino" [ref=e1452] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/tenis-masculino
+        - text: "-"
+      - listitem [ref=e1453]:
+        - link "tennis feminino" [ref=e1454] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/tenis-feminino
+        - text: "-"
+      - listitem [ref=e1455]:
+        - link "tv 32 polegadas" [ref=e1456] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/tv-32-polegadas
+        - text: "-"
+      - listitem [ref=e1457]:
+        - link "tv 50 4k" [ref=e1458] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/tv-50-polegadas-4k
+        - text: "-"
+      - listitem [ref=e1459]:
+        - link "tv 50 polegadas" [ref=e1460] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/tv-50-polegadas
+        - text: "-"
+      - listitem [ref=e1461]:
+        - link "ventilador" [ref=e1462] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/ventilador
+        - text: "-"
+      - listitem [ref=e1463]:
+        - link "xbox" [ref=e1464] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/xbox
+        - text: "-"
+      - listitem [ref=e1465]:
+        - link "xbox series x" [ref=e1466] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/xbox-series-x
+        - text: "-"
+      - listitem [ref=e1467]:
+        - link "xdj" [ref=e1468] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/xdj
+        - text: "-"
+      - listitem [ref=e1469]:
+        - link "xiaomi" [ref=e1470] [cursor=pointer]:
+          - /url: https://lista.mercadolivre.com.br/celular-xiaomi
+        - text: "-"
+      - listitem [ref=e1471]:
+        - link "comparador de celulares" [ref=e1472] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/compare/celulares/
+  - generic [ref=e1475]:
+    - heading "Pesquise produto por letra inicial" [level=3] [ref=e1476]
+    - list "Pesquise produto por letra inicial" [ref=e1478]:
+      - listitem [ref=e1479]:
+        - link "Pesquise produto por letra inicial A" [ref=e1480] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/A/1
+          - text: A
+      - listitem [ref=e1481]: "-"
+      - listitem [ref=e1482]:
+        - link "Pesquise produto por letra inicial B" [ref=e1483] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/B/1
+          - text: B
+      - listitem [ref=e1484]: "-"
+      - listitem [ref=e1485]:
+        - link "Pesquise produto por letra inicial C" [ref=e1486] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/C/1
+          - text: C
+      - listitem [ref=e1487]: "-"
+      - listitem [ref=e1488]:
+        - link "Pesquise produto por letra inicial D" [ref=e1489] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/D/1
+          - text: D
+      - listitem [ref=e1490]: "-"
+      - listitem [ref=e1491]:
+        - link "Pesquise produto por letra inicial E" [ref=e1492] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/E/1
+          - text: E
+      - listitem [ref=e1493]: "-"
+      - listitem [ref=e1494]:
+        - link "Pesquise produto por letra inicial F" [ref=e1495] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/F/1
+          - text: F
+      - listitem [ref=e1496]: "-"
+      - listitem [ref=e1497]:
+        - link "Pesquise produto por letra inicial G" [ref=e1498] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/G/1
+          - text: G
+      - listitem [ref=e1499]: "-"
+      - listitem [ref=e1500]:
+        - link "Pesquise produto por letra inicial H" [ref=e1501] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/H/1
+          - text: H
+      - listitem [ref=e1502]: "-"
+      - listitem [ref=e1503]:
+        - link "Pesquise produto por letra inicial I" [ref=e1504] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/I/1
+          - text: I
+      - listitem [ref=e1505]: "-"
+      - listitem [ref=e1506]:
+        - link "Pesquise produto por letra inicial J" [ref=e1507] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/J/1
+          - text: J
+      - listitem [ref=e1508]: "-"
+      - listitem [ref=e1509]:
+        - link "Pesquise produto por letra inicial K" [ref=e1510] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/K/1
+          - text: K
+      - listitem [ref=e1511]: "-"
+      - listitem [ref=e1512]:
+        - link "Pesquise produto por letra inicial L" [ref=e1513] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/L/1
+          - text: L
+      - listitem [ref=e1514]: "-"
+      - listitem [ref=e1515]:
+        - link "Pesquise produto por letra inicial M" [ref=e1516] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/M/1
+          - text: M
+      - listitem [ref=e1517]: "-"
+      - listitem [ref=e1518]:
+        - link "Pesquise produto por letra inicial N" [ref=e1519] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/N/1
+          - text: "N"
+      - listitem [ref=e1520]: "-"
+      - listitem [ref=e1521]:
+        - link "Pesquise produto por letra inicial O" [ref=e1522] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/O/1
+          - text: O
+      - listitem [ref=e1523]: "-"
+      - listitem [ref=e1524]:
+        - link "Pesquise produto por letra inicial P" [ref=e1525] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/P/1
+          - text: P
+      - listitem [ref=e1526]: "-"
+      - listitem [ref=e1527]:
+        - link "Pesquise produto por letra inicial Q" [ref=e1528] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/Q/1
+          - text: Q
+      - listitem [ref=e1529]: "-"
+      - listitem [ref=e1530]:
+        - link "Pesquise produto por letra inicial R" [ref=e1531] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/R/1
+          - text: R
+      - listitem [ref=e1532]: "-"
+      - listitem [ref=e1533]:
+        - link "Pesquise produto por letra inicial S" [ref=e1534] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/S/1
+          - text: S
+      - listitem [ref=e1535]: "-"
+      - listitem [ref=e1536]:
+        - link "Pesquise produto por letra inicial T" [ref=e1537] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/T/1
+          - text: T
+      - listitem [ref=e1538]: "-"
+      - listitem [ref=e1539]:
+        - link "Pesquise produto por letra inicial U" [ref=e1540] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/U/1
+          - text: U
+      - listitem [ref=e1541]: "-"
+      - listitem [ref=e1542]:
+        - link "Pesquise produto por letra inicial V" [ref=e1543] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/V/1
+          - text: V
+      - listitem [ref=e1544]: "-"
+      - listitem [ref=e1545]:
+        - link "Pesquise produto por letra inicial W" [ref=e1546] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/W/1
+          - text: W
+      - listitem [ref=e1547]: "-"
+      - listitem [ref=e1548]:
+        - link "Pesquise produto por letra inicial X" [ref=e1549] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/X/1
+          - text: X
+      - listitem [ref=e1550]: "-"
+      - listitem [ref=e1551]:
+        - link "Pesquise produto por letra inicial Y" [ref=e1552] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/Y/1
+          - text: "Y"
+      - listitem [ref=e1553]: "-"
+      - listitem [ref=e1554]:
+        - link "Pesquise produto por letra inicial Z" [ref=e1555] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/glossary/Z/1
+          - text: Z
+  - generic:
+    - heading "Mais informações " [level=2]:
+      - button "Mais informações " [ref=e1556] [cursor=pointer]:
+        - text: Mais informações
+        - generic [ref=e1557]: 
+  - contentinfo [ref=e1558]:
+    - generic [ref=e1560]:
+      - generic [ref=e1561]:
+        - generic [ref=e1562]: Copyright © 1999-2026 Ebazar.com.br LTDA.
+        - navigation [ref=e1563]:
+          - list [ref=e1564]:
+            - listitem [ref=e1565]:
+              - link "Trabalhe conosco" [ref=e1566] [cursor=pointer]:
+                - /url: https://careers-meli.mercadolibre.com/pt?utm_campaign=site-mlb&utm_source=mercadolibre&utm_medium=mercadolibre
+            - listitem [ref=e1567]:
+              - link "Termos e condições" [ref=e1568] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/ajuda/991
+            - listitem [ref=e1569]:
+              - link "Promoções" [ref=e1570] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/l/promocoes
+            - listitem [ref=e1571]:
+              - link "Como cuidamos da sua privacidade" [ref=e1572] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/privacidade
+            - listitem [ref=e1573]:
+              - link "Acessibilidade" [ref=e1574] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/acessibilidade
+            - listitem [ref=e1575]:
+              - link "Contato" [ref=e1576] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/ajuda
+            - listitem [ref=e1577]:
+              - link "Informações sobre seguros" [ref=e1578] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/ajuda/23303
+            - listitem [ref=e1579]:
+              - link "Programa de Afiliados" [ref=e1580] [cursor=pointer]:
+                - /url: https://www.mercadolivre.com.br/l/afiliados-home
+      - paragraph [ref=e1581]: CNPJ n.º 03.007.331/0001-41 / Av. das Nações Unidas, nº 3.003, Bonfim, Osasco/SP - CEP 06233-903 - empresa do grupo Mercado Livre.
+    - link "Mercado Livre" [ref=e1582] [cursor=pointer]:
+      - /url: https://hp.mercadolibre.com/?p=ML&s=MLB&d=desktop
+  - region [ref=e1583]:
+    - generic [ref=e1584]:
+      - paragraph [ref=e1586]:
+        - text: Usamos cookies para melhorar sua experiência no Mercado Livre. Consulte mais informações na nossa
+        - link "Central de privacidade." [ref=e1587] [cursor=pointer]:
+          - /url: https://www.mercadolivre.com.br/privacidade#tech-and-cookies
+      - generic [ref=e1588]:
+        - button "Aceitar cookies" [ref=e1589] [cursor=pointer]
+        - button "Configurar cookies" [ref=e1590] [cursor=pointer]
+  - tooltip "Estamos calculando o frete para esse endereço Por favor, confirme seu CEP e verifique detalhadamente os custos e prazos de entrega. Confirmar CEP Entendi" [ref=e1593]:
+    - generic [ref=e1595]:
+      - heading "Estamos calculando o frete para esse endereço" [level=2] [ref=e1596]
+      - generic [ref=e1597]: Por favor, confirme seu CEP e verifique detalhadamente os custos e prazos de entrega.
+      - generic [ref=e1598]:
+        - button "Confirmar CEP" [ref=e1599] [cursor=pointer]:
+          - generic [ref=e1600]: Confirmar CEP
+        - button "Entendi" [ref=e1601] [cursor=pointer]:
+          - generic [ref=e1602]: Entendi

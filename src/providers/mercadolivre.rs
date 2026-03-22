@@ -106,6 +106,18 @@ fn parse_ml_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provide
             None
         };
 
+        // Detect international (cross-border trade) listings
+        let card_html = card.html();
+        let is_international = card_html.contains("Internacional")
+            || card_html.contains("poly-component__cbt");
+        let domestic = !is_international;
+
+        let tax_regime = if is_international {
+            TaxRegime::Unknown // Will be calculated by tax engine
+        } else {
+            TaxRegime::Domestic
+        };
+
         products.push(Product {
             provider: ProviderId::MercadoLivre,
             platform_id: String::new(),
@@ -119,12 +131,12 @@ fn parse_ml_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provide
                 price_brl: price,
                 shipping_cost,
                 tax: TaxInfo {
-                    remessa_conforme: false,
-                    taxes_included: true,
+                    remessa_conforme: is_international, // ML international uses Remessa Conforme
+                    taxes_included: !is_international,  // Domestic: taxes included. International: may not be
                     import_tax: None,
                     icms: None,
                     total_tax: Decimal::ZERO,
-                    tax_regime: TaxRegime::Domestic,
+                    tax_regime,
                 },
                 total_cost: price + shipping_cost.unwrap_or(Decimal::ZERO),
                 original_price: None,
@@ -135,7 +147,7 @@ fn parse_ml_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provide
             rating: None,
             review_count: None,
             sold_count: None,
-            domestic: true,
+            domestic,
             fetched_at: Utc::now(),
         });
     }

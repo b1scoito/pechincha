@@ -204,7 +204,9 @@ impl SearchOrchestrator {
 }
 
 /// Check if a product title is relevant to the search query.
-/// All significant query tokens must appear in the title.
+/// Uses a scoring system: each matching token adds a point.
+/// Products must match at least 50% of significant tokens, AND
+/// all "core" tokens (numbers like model numbers) must match.
 fn is_relevant(title: &str, query: &str) -> bool {
     let stop_words = &[
         "de", "do", "da", "dos", "das", "para", "com", "sem", "por", "em", "no", "na",
@@ -213,7 +215,6 @@ fn is_relevant(title: &str, query: &str) -> bool {
 
     let title_lower = title.to_lowercase();
 
-    // Split query into tokens, filter out stop words and very short tokens
     let query_tokens: Vec<&str> = query
         .split_whitespace()
         .filter(|t| t.len() > 1 && !stop_words.contains(&t.to_lowercase().as_str()))
@@ -223,10 +224,36 @@ fn is_relevant(title: &str, query: &str) -> bool {
         return true;
     }
 
-    // All significant tokens must be present in the title
-    query_tokens
+    // Core tokens: numbers and model identifiers (RTX, GTX, i7, etc.)
+    // These MUST match — they identify the specific product
+    let core_tokens: Vec<&str> = query_tokens
         .iter()
-        .all(|token| title_lower.contains(&token.to_lowercase()))
+        .filter(|t| {
+            let t = t.to_lowercase();
+            t.chars().any(|c| c.is_ascii_digit()) // contains numbers: "4070", "128gb", "i7"
+                || ["rtx", "gtx", "rx", "ryzen", "intel", "amd", "iphone", "galaxy", "dyson"]
+                    .contains(&t.as_str())
+        })
+        .copied()
+        .collect();
+
+    // All core tokens must match
+    let core_match = core_tokens
+        .iter()
+        .all(|token| title_lower.contains(&token.to_lowercase()));
+
+    if !core_match {
+        return false;
+    }
+
+    // For non-core tokens (brand names, descriptors), require at least 50% match
+    let total = query_tokens.len();
+    let matched = query_tokens
+        .iter()
+        .filter(|token| title_lower.contains(&token.to_lowercase()))
+        .count();
+
+    matched * 2 >= total // at least 50%
 }
 
 impl SearchOrchestrator {

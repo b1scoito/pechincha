@@ -44,7 +44,11 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
     for (i, product) in results.products.iter().enumerate() {
         let total_color = price_color(product.price.total_cost, best_price, worst_price);
 
-        let platform = format_provider(product.provider);
+        let platform = if !product.domestic {
+            format!("{} 🌎", format_provider(product.provider))
+        } else {
+            format_provider(product.provider)
+        };
         let title = truncate(&product.title, 55);
         let price = format_brl(product.price.price_brl);
         let shipping = match product.price.shipping_cost {
