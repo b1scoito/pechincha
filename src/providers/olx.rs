@@ -40,7 +40,7 @@ impl Provider for Olx {
 
     async fn search(&self, query: &SearchQuery) -> Result<Vec<Product>, ProviderError> {
         let encoded = urlencoding::encode(&query.query);
-        let url = format!("https://www.olx.com.br/informatica/q/{encoded}");
+        let url = format!("https://www.olx.com.br/brasil?q={encoded}");
 
         debug!(url = %url, "OLX search");
 

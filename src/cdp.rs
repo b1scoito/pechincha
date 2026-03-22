@@ -56,7 +56,7 @@ pub fn search_url(provider: ProviderId, query: &str) -> String {
         ProviderId::AmazonUS => format!("https://www.amazon.com/s?k={q}"),
         ProviderId::Kabum => format!("https://www.kabum.com.br/busca/{}", query.replace(' ', "-")),
         ProviderId::MagazineLuiza => format!("https://www.magazineluiza.com.br/busca/{q}/"),
-        ProviderId::Olx => format!("https://www.olx.com.br/informatica/q/{q}"),
+        ProviderId::Olx => format!("https://www.olx.com.br/brasil?q={q}"),
     }
 }
 
