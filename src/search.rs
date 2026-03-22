@@ -116,6 +116,56 @@ impl SearchOrchestrator {
 
         let exchange_rate = exchange_rate_future.await;
 
+        // For Amazon US products: fetch real shipping + import charges from detail pages
+        if let Some(cdp_port) = self.cdp_port {
+            let amz_us_products: Vec<(usize, String)> = all_products
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.provider == ProviderId::AmazonUS && !p.url.is_empty())
+                .map(|(i, p)| (i, p.url.clone()))
+                .collect();
+
+            if !amz_us_products.is_empty() {
+                info!(
+                    count = amz_us_products.len(),
+                    "Fetching Amazon US shipping costs from detail pages"
+                );
+
+                // Fetch shipping costs concurrently
+                let mut shipping_handles = Vec::new();
+                for (idx, url) in amz_us_products {
+                    let handle = tokio::spawn(async move {
+                        let cost = crate::cdp::fetch_shipping_cost(cdp_port, &url).await;
+                        (idx, cost)
+                    });
+                    shipping_handles.push(handle);
+                }
+
+                for handle in shipping_handles {
+                    if let Ok((idx, Some(shipping_usd))) = handle.await {
+                        let shipping_brl = shipping_usd * exchange_rate;
+                        all_products[idx].price.shipping_cost = Some(shipping_brl);
+                        // Amazon US "Shipping & Import Charges" includes BOTH shipping and import duty
+                        // So we set taxes_included=true and use shipping_cost for the combined charge
+                        all_products[idx].price.tax = TaxInfo {
+                            remessa_conforme: false,
+                            taxes_included: true, // Amazon's charge includes import duty
+                            import_tax: None,
+                            icms: None,
+                            total_tax: Decimal::ZERO, // Included in shipping_cost
+                            tax_regime: TaxRegime::InternationalStandard,
+                        };
+                        debug!(
+                            idx = idx,
+                            shipping_usd = %shipping_usd,
+                            shipping_brl = %shipping_brl,
+                            "Got Amazon US shipping cost"
+                        );
+                    }
+                }
+            }
+        }
+
         // Apply tax calculations and currency conversion
         for product in &mut all_products {
             if product.price.currency == Currency::USD {
