@@ -411,47 +411,72 @@ fn is_relevant(title: &str, query: &str) -> bool {
         "the", "for", "with", "and", "or", "a", "an", "o", "e", "um", "uma",
     ];
 
-    let title_lower = title.to_lowercase();
+    // Normalize: lowercase, split on hyphens/underscores AND letter-digit boundaries
+    // "LP-6v2" → "lp 6 v2", "RTX4070" → "rtx 4070"
+    let normalize = |s: &str| -> String {
+        let lower = s.to_lowercase();
+        let mut result = String::new();
+        let mut prev_is_digit = false;
+        for c in lower.chars() {
+            if c == '-' || c == '_' {
+                result.push(' ');
+                prev_is_digit = false;
+            } else if c.is_ascii_digit() && !prev_is_digit && !result.is_empty() && !result.ends_with(' ') {
+                result.push(' ');
+                result.push(c);
+                prev_is_digit = true;
+            } else if !c.is_ascii_digit() && prev_is_digit {
+                result.push(' ');
+                result.push(c);
+                prev_is_digit = false;
+            } else {
+                result.push(c);
+                prev_is_digit = c.is_ascii_digit();
+            }
+        }
+        result.split_whitespace().collect::<Vec<_>>().join(" ")
+    };
 
-    let query_tokens: Vec<&str> = query
+    let title_norm = normalize(title);
+
+    let query_tokens: Vec<String> = normalize(query)
         .split_whitespace()
-        .filter(|t| t.len() > 1 && !stop_words.contains(&t.to_lowercase().as_str()))
+        .filter(|t| t.len() > 1 && !stop_words.contains(t))
+        .map(|s| s.to_string())
         .collect();
 
     if query_tokens.is_empty() {
         return true;
     }
 
-    // Core tokens: numbers and model identifiers (RTX, GTX, i7, etc.)
-    // These MUST match — they identify the specific product
+    // Core tokens: contain numbers or are product identifiers
     let core_tokens: Vec<&str> = query_tokens
         .iter()
         .filter(|t| {
-            let t = t.to_lowercase();
-            t.chars().any(|c| c.is_ascii_digit()) // contains numbers: "4070", "128gb", "i7"
+            t.chars().any(|c| c.is_ascii_digit())
                 || ["rtx", "gtx", "rx", "ryzen", "intel", "amd", "iphone", "galaxy", "dyson"]
                     .contains(&t.as_str())
         })
-        .copied()
+        .map(|s| s.as_str())
         .collect();
 
     // All core tokens must match
     let core_match = core_tokens
         .iter()
-        .all(|token| title_lower.contains(&token.to_lowercase()));
+        .all(|token| title_norm.contains(token));
 
     if !core_match {
         return false;
     }
 
-    // For non-core tokens (brand names, descriptors), require at least 50% match
+    // Non-core: 50% match
     let total = query_tokens.len();
     let matched = query_tokens
         .iter()
-        .filter(|token| title_lower.contains(&token.to_lowercase()))
+        .filter(|token| title_norm.contains(token.as_str()))
         .count();
 
-    matched * 2 >= total // at least 50%
+    matched * 2 >= total
 }
 
 impl SearchOrchestrator {
