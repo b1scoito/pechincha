@@ -142,27 +142,32 @@ impl SearchOrchestrator {
                 }
 
                 for handle in handles {
-                    if let Ok((idx, Some((price_usd, shipping_usd)))) = handle.await {
+                    if let Ok((idx, Some(details))) = handle.await {
                         // Fill in product price if it was missing from search results
-                        if let Some(price) = price_usd {
+                        if let Some(price) = details.product_price {
                             if all_products[idx].price.listed_price == Decimal::ZERO {
                                 all_products[idx].price.listed_price = price;
-                                all_products[idx].price.price_brl = price; // Will be converted below
+                                all_products[idx].price.price_brl = price;
                                 info!(idx = idx, price_usd = %price, "Got Amazon US product price");
                             }
                         }
 
+                        // Store MSRP as original_price
+                        if let Some(msrp) = details.msrp {
+                            all_products[idx].price.original_price = Some(msrp);
+                            info!(idx = idx, msrp_usd = %msrp, "Got Amazon US MSRP");
+                        }
+
                         // Set real shipping + import charges
-                        if let Some(ship_import) = shipping_usd {
+                        if let Some(ship_import) = details.shipping_import {
                             let ship_import_brl = ship_import * exchange_rate;
                             all_products[idx].price.shipping_cost = Some(ship_import_brl);
-                            // Amazon US "Shipping & Import Charges" includes BOTH
                             all_products[idx].price.tax = TaxInfo {
                                 remessa_conforme: false,
                                 taxes_included: true,
                                 import_tax: None,
                                 icms: None,
-                                total_tax: Decimal::ZERO, // Included in shipping_cost
+                                total_tax: Decimal::ZERO,
                                 tax_regime: TaxRegime::InternationalStandard,
                             };
                             info!(

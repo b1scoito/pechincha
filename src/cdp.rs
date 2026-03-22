@@ -86,9 +86,15 @@ pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderErro
     Ok(html)
 }
 
-/// Fetch Amazon US product detail page and extract price + shipping + import charges.
-/// Returns (product_price_usd, shipping_import_usd) — either or both may be present.
-pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option<(Option<rust_decimal::Decimal>, Option<rust_decimal::Decimal>)> {
+/// Amazon US detail page data: price, shipping, and MSRP.
+pub struct AmazonUsDetails {
+    pub product_price: Option<rust_decimal::Decimal>,
+    pub shipping_import: Option<rust_decimal::Decimal>,
+    pub msrp: Option<rust_decimal::Decimal>,
+}
+
+/// Fetch Amazon US product detail page and extract price, shipping, and MSRP.
+pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option<AmazonUsDetails> {
     let browser = get_browser(cdp_port).await.ok()?;
 
     let page = browser.new_page(product_url).await.ok()?;
@@ -124,6 +130,19 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
                 productPrice = whole + '.' + fraction;
             }
 
+            // MSRP / List Price — strikethrough price
+            let msrp = null;
+            const strikeEl = document.querySelector('#corePriceDisplay_desktop_feature_div span[data-a-strike="true"] .a-offscreen, span[data-a-strike="true"] .a-offscreen');
+            if (strikeEl) {
+                const m = strikeEl.textContent.match(/\$(\d+[\.,]\d+)/);
+                if (m) msrp = m[1];
+            }
+            // Fallback: look for "List Price:" text
+            if (!msrp) {
+                const listMatch = all.match(/List\s*Price:\s*\$(\d+[\.,]\d+)/i);
+                if (listMatch) msrp = listMatch[1];
+            }
+
             // Shipping & Import Charges combined
             const combined = all.match(/\$(\d+[\.,]\d+)\s*Shipping\s*&?\s*Import\s*(?:Charges|Fees)/i);
 
@@ -133,6 +152,7 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
 
             return JSON.stringify({
                 productPrice: productPrice,
+                msrp: msrp,
                 combined: combined ? combined[1] : null,
                 shipping: shipping ? shipping[1] : null,
                 importFee: importFee ? importFee[1] : null,
@@ -151,13 +171,15 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
     };
     let data: serde_json::Value = serde_json::from_str(&json_str).ok()?;
 
-    // Product price
     let product_price: Option<rust_decimal::Decimal> = data["productPrice"]
         .as_str()
         .and_then(|s| s.replace(',', "").parse().ok());
 
-    // Shipping + import charges
-    let shipping_total = if let Some(combined) = data["combined"].as_str() {
+    let msrp: Option<rust_decimal::Decimal> = data["msrp"]
+        .as_str()
+        .and_then(|s| s.replace(',', "").parse().ok());
+
+    let shipping_import = if let Some(combined) = data["combined"].as_str() {
         combined.replace(',', "").parse::<rust_decimal::Decimal>().ok()
     } else {
         let shipping: rust_decimal::Decimal = data["shipping"].as_str()
@@ -170,7 +192,7 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
         if total > rust_decimal::Decimal::ZERO { Some(total) } else { None }
     };
 
-    Some((product_price, shipping_total))
+    Some(AmazonUsDetails { product_price, shipping_import, msrp })
 }
 
 /// Fetch multiple pages concurrently — opens all tabs at once.

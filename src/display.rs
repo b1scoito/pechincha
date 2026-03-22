@@ -93,17 +93,39 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
 
     println!("{table}");
 
-    // Print links below the table
+    // Print links and MSRP info below the table
     println!();
     for (i, product) in results.products.iter().enumerate() {
-        if !product.url.is_empty() {
-            println!(
-                "  {} {} {}",
-                format!("[{}]", i + 1).dimmed(),
-                format_provider(product.provider).dimmed(),
-                product.url
-            );
+        let mut line = format!(
+            "  {} {}",
+            format!("[{}]", i + 1).dimmed(),
+            format_provider(product.provider).dimmed(),
+        );
+
+        // Show MSRP / savings if available
+        if let Some(msrp) = product.price.original_price {
+            if msrp > product.price.listed_price {
+                let savings_pct = ((msrp - product.price.listed_price) * Decimal::from(100)) / msrp;
+                // Show MSRP in original currency
+                let msrp_display = if product.price.currency == crate::models::Currency::USD {
+                    format!("US${:.2}", msrp)
+                } else {
+                    format_brl(msrp)
+                };
+                line.push_str(&format!(
+                    " {} {} {}",
+                    "MSRP:".dimmed(),
+                    msrp_display.dimmed(),
+                    format!("({:.0}% off)", savings_pct).green()
+                ));
+            }
         }
+
+        if !product.url.is_empty() {
+            line.push_str(&format!(" {}", product.url));
+        }
+
+        println!("{}", line);
     }
 
     // Summary
