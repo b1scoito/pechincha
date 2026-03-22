@@ -131,6 +131,26 @@ pub async fn fetch_pages(
                 ).await;
                 tokio::time::sleep(SCROLL_WAIT).await;
 
+                // Click "See more" / "Ver mais" / expand buttons to reveal hidden products
+                let _ = page.evaluate(
+                    r#"(() => {
+                        const buttons = document.querySelectorAll(
+                            'a.a-expander-header, button[aria-expanded="false"], ' +
+                            '[data-action="a-expander-toggle"], ' +
+                            'a.s-pagination-next, ' +
+                            '.a-section .a-text-bold'
+                        );
+                        buttons.forEach(b => {
+                            const text = (b.textContent || '').toLowerCase();
+                            if (text.includes('see more') || text.includes('ver mais') ||
+                                text.includes('show more') || text.includes('mais opções')) {
+                                b.click();
+                            }
+                        });
+                    })()"#
+                ).await;
+                tokio::time::sleep(SCROLL_WAIT).await;
+
                 let html = page
                     .content()
                     .await
