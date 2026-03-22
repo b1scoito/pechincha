@@ -231,8 +231,35 @@ impl SearchOrchestrator {
         }
 
         // Relevance filter: keep only products whose title matches the core search terms.
-        // "RTX 4070" should match "Placa de Vídeo RTX 4070 12GB" but NOT "Fonte para Notebook RTX"
         all_products.retain(|p| is_relevant(&p.title, &query.query));
+
+        // MSRP-based accessory filter: if we have a reference MSRP, products priced
+        // below 10% of it are almost certainly accessories, not the actual product.
+        // E.g., MSRP $1399 → filter out R$24 brushes and R$57 filters.
+        let reference_msrp_brl: Option<Decimal> = all_products.iter()
+            .filter_map(|p| p.price.original_price.map(|msrp| {
+                if p.price.currency == Currency::USD {
+                    msrp * exchange_rate
+                } else {
+                    msrp
+                }
+            }))
+            .max(); // Use the highest MSRP as reference
+
+        if let Some(msrp_brl) = reference_msrp_brl {
+            let min_threshold = msrp_brl * rust_decimal_macros::dec!(0.10);
+            let before = all_products.len();
+            all_products.retain(|p| p.price.total_cost >= min_threshold);
+            let filtered = before - all_products.len();
+            if filtered > 0 {
+                debug!(
+                    filtered = filtered,
+                    threshold = %min_threshold,
+                    msrp = %msrp_brl,
+                    "Filtered accessories by MSRP threshold"
+                );
+            }
+        }
 
         // Filter by price range
         if let Some(min) = query.min_price {
