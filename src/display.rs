@@ -2,7 +2,7 @@ use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Cell, Color, ContentArrangement, Table};
 use rust_decimal::Decimal;
 
-use crate::models::{Product, SearchResults};
+use crate::models::{Currency, Product, SearchResults};
 use crate::providers::ProviderId;
 
 pub fn print_results(results: &SearchResults, show_taxes: bool) {
@@ -15,6 +15,9 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
         return;
     }
 
+    // Check if any product has MSRP data
+    let has_msrp = results.products.iter().any(|p| p.price.original_price.is_some());
+
     let mut table = Table::new();
     table
         .load_preset(UTF8_FULL)
@@ -22,24 +25,21 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
         .set_content_arrangement(ContentArrangement::Dynamic);
 
     // Header
-    let mut headers = vec!["#", "Platform", "Product", "Price", "Ship"];
-    if show_taxes {
-        headers.push("Tax");
+    let mut headers = vec!["#", "Platform", "Product", "Price", "Ship+Tax", "Total", "★"];
+    if has_msrp {
+        headers.push("MSRP");
+        headers.push("Savings");
     }
-    headers.extend_from_slice(&["Total", "★"]);
     table.set_header(headers);
 
     // Find best and worst prices for coloring
-    let best_price = results
-        .products
-        .iter()
-        .map(|p| p.price.total_cost)
-        .min();
-    let worst_price = results
-        .products
-        .iter()
-        .map(|p| p.price.total_cost)
-        .max();
+    let best_price = results.products.iter().map(|p| p.price.total_cost).min();
+    let worst_price = results.products.iter().map(|p| p.price.total_cost).max();
+
+    // Find reference MSRP (first product that has one — typically from Amazon US)
+    let reference_msrp_usd: Option<Decimal> = results.products.iter()
+        .find(|p| p.price.original_price.is_some() && p.price.currency == Currency::USD)
+        .and_then(|p| p.price.original_price);
 
     for (i, product) in results.products.iter().enumerate() {
         let total_color = price_color(product.price.total_cost, best_price, worst_price);
@@ -49,16 +49,25 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
         } else {
             format_provider(product.provider)
         };
-        let title = truncate(&product.title, 55);
+        let title = truncate(&product.title, 50);
         let price = format_brl(product.price.price_brl);
-        let shipping = match product.price.shipping_cost {
-            Some(c) if c == Decimal::ZERO => "Free".to_string(),
-            Some(c) => format_brl(c),
-            None => "—".to_string(),
+
+        // Combine shipping + tax into one column
+        let ship_tax = {
+            let ship = product.price.shipping_cost.unwrap_or(Decimal::ZERO);
+            let tax = product.price.tax.total_tax;
+            let combined = ship + tax;
+            if combined > Decimal::ZERO {
+                format_brl(combined)
+            } else if product.price.tax.taxes_included {
+                "Incl.".to_string()
+            } else {
+                "—".to_string()
+            }
         };
+
         let total = format_brl(product.price.total_cost);
-        let rating = product
-            .rating
+        let rating = product.rating
             .map(|r| format!("{:.1}", r))
             .unwrap_or_else(|| "—".to_string());
 
@@ -67,74 +76,88 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
             Cell::new(platform),
             Cell::new(title),
             Cell::new(price),
-            Cell::new(shipping),
+            Cell::new(ship_tax),
+            Cell::new(total).fg(total_color),
+            Cell::new(rating),
         ];
 
-        if show_taxes {
-            let tax = if product.price.tax.total_tax > Decimal::ZERO {
-                format!(
-                    "{} ({})",
-                    format_brl(product.price.tax.total_tax),
-                    product.price.tax.tax_regime
-                )
-            } else if product.price.tax.taxes_included {
-                "Incl.".to_string()
+        if has_msrp {
+            // MSRP column
+            let msrp_display = if let Some(msrp) = product.price.original_price {
+                if product.price.currency == Currency::USD {
+                    format!("US${:.2}", msrp)
+                } else {
+                    format_brl(msrp)
+                }
+            } else if let Some(ref_msrp) = reference_msrp_usd {
+                // Show reference MSRP from Amazon US for comparison
+                format!("US${:.2}", ref_msrp).dimmed().to_string()
             } else {
                 "—".to_string()
             };
-            row.push(Cell::new(tax));
-        }
+            row.push(Cell::new(msrp_display));
 
-        row.push(Cell::new(total).fg(total_color));
-        row.push(Cell::new(rating));
+            // Savings column: compare total cost to reference MSRP converted to BRL
+            // For this we need the exchange rate — approximate from price_brl/listed_price
+            let savings_display = if let Some(ref_msrp) = reference_msrp_usd {
+                // Estimate exchange rate from any USD product
+                let exchange_rate = results.products.iter()
+                    .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
+                    .map(|p| p.price.price_brl / p.price.listed_price)
+                    .unwrap_or(Decimal::from(5));
+
+                let msrp_brl = ref_msrp * exchange_rate;
+                if product.price.total_cost < msrp_brl {
+                    let pct = ((msrp_brl - product.price.total_cost) * Decimal::from(100)) / msrp_brl;
+                    format!("-{:.0}%", pct).green().to_string()
+                } else {
+                    let pct = ((product.price.total_cost - msrp_brl) * Decimal::from(100)) / msrp_brl;
+                    format!("+{:.0}%", pct).red().to_string()
+                }
+            } else {
+                "—".to_string()
+            };
+            row.push(Cell::new(savings_display));
+        }
 
         table.add_row(row);
     }
 
     println!("{table}");
 
-    // Print links and MSRP info below the table
+    // MSRP reference line
+    if let Some(msrp) = reference_msrp_usd {
+        let exchange_rate = results.products.iter()
+            .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
+            .map(|p| p.price.price_brl / p.price.listed_price)
+            .unwrap_or(Decimal::from(5));
+        let msrp_brl = msrp * exchange_rate;
+        println!(
+            "\n{} US${:.2} = {} (reference for savings calculation)",
+            "MSRP:".bold(),
+            msrp,
+            format_brl(msrp_brl).bold()
+        );
+    }
+
+    // Print links below
     println!();
     for (i, product) in results.products.iter().enumerate() {
-        let mut line = format!(
-            "  {} {}",
-            format!("[{}]", i + 1).dimmed(),
-            format_provider(product.provider).dimmed(),
-        );
-
-        // Show MSRP / savings if available
-        if let Some(msrp) = product.price.original_price {
-            if msrp > product.price.listed_price {
-                let savings_pct = ((msrp - product.price.listed_price) * Decimal::from(100)) / msrp;
-                // Show MSRP in original currency
-                let msrp_display = if product.price.currency == crate::models::Currency::USD {
-                    format!("US${:.2}", msrp)
-                } else {
-                    format_brl(msrp)
-                };
-                line.push_str(&format!(
-                    " {} {} {}",
-                    "MSRP:".dimmed(),
-                    msrp_display.dimmed(),
-                    format!("({:.0}% off)", savings_pct).green()
-                ));
-            }
-        }
-
         if !product.url.is_empty() {
-            line.push_str(&format!(" {}", product.url));
+            println!(
+                "  {} {} {}",
+                format!("[{}]", i + 1).dimmed(),
+                format_provider(product.provider).dimmed(),
+                product.url
+            );
         }
-
-        println!("{}", line);
     }
 
     // Summary
     println!(
         "\n{} results from {} providers in {:.1}s",
         results.products.len().to_string().bold(),
-        count_unique_providers(&results.products)
-            .to_string()
-            .bold(),
+        count_unique_providers(&results.products).to_string().bold(),
         results.query_time.as_secs_f64()
     );
 

@@ -130,17 +130,31 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
                 productPrice = whole + '.' + fraction;
             }
 
-            // MSRP / List Price — strikethrough price
+            // MSRP / List Price — strikethrough price in the MAIN price area only
             let msrp = null;
-            const strikeEl = document.querySelector('#corePriceDisplay_desktop_feature_div span[data-a-strike="true"] .a-offscreen, span[data-a-strike="true"] .a-offscreen');
-            if (strikeEl) {
-                const m = strikeEl.textContent.match(/\$(\d+[\.,]\d+)/);
-                if (m) msrp = m[1];
+            // Try the core price display area first (most reliable)
+            const corePrice = document.querySelector('#corePriceDisplay_desktop_feature_div, #corePrice_desktop');
+            if (corePrice) {
+                const strikeEl = corePrice.querySelector('span[data-a-strike="true"] .a-offscreen');
+                if (strikeEl) {
+                    const m = strikeEl.textContent.match(/\$(\d+[\.,]\d+)/);
+                    if (m) msrp = m[1];
+                }
+                // Also check for "List Price:" within the core price area
+                if (!msrp) {
+                    const listEl = corePrice.querySelector('.basisPrice .a-offscreen');
+                    if (listEl) {
+                        const m = listEl.textContent.match(/\$(\d+[\.,]\d+)/);
+                        if (m) msrp = m[1];
+                    }
+                }
             }
-            // Fallback: look for "List Price:" text
-            if (!msrp) {
-                const listMatch = all.match(/List\s*Price:\s*\$(\d+[\.,]\d+)/i);
-                if (listMatch) msrp = listMatch[1];
+            // Fallback: "List Price:" in the page text, but only if price > product price
+            if (!msrp && productPrice) {
+                const listMatch = all.match(/List\s*Price:\s*\$(\d+[\.,]\d+)/);
+                if (listMatch && parseFloat(listMatch[1]) > parseFloat(productPrice)) {
+                    msrp = listMatch[1];
+                }
             }
 
             // Shipping & Import Charges combined
