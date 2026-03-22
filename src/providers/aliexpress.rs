@@ -95,7 +95,7 @@ impl Provider for AliExpress {
     }
 }
 
-fn try_extract_dida_data(html: &str, max_results: usize) -> Option<Vec<Product>> {
+fn try_extract_dida_data(html: &str, _max_results: usize) -> Option<Vec<Product>> {
     let marker = "window._dida_config_";
     let start = html.find(marker)?;
     let eq = html[start..].find('=')?;

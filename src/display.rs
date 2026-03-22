@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 use crate::models::{Currency, Product, SearchResults};
 use crate::providers::ProviderId;
 
-pub fn print_results(results: &SearchResults, show_taxes: bool) {
+pub fn print_results(results: &SearchResults, _show_taxes: bool) {
     if results.products.is_empty() {
         println!("{}", "No results found.".yellow());
         if !results.errors.is_empty() {

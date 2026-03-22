@@ -213,7 +213,7 @@ fn parse_shopee_html(html: &str, max_results: usize) -> Vec<Product> {
     products
 }
 
-fn try_extract_shopee_json(html: &str, max_results: usize) -> Option<Vec<Product>> {
+fn try_extract_shopee_json(html: &str, _max_results: usize) -> Option<Vec<Product>> {
     // Shopee sometimes embeds search data in window.__INITIAL_STATE__ or similar
     let markers = ["window.__INITIAL_STATE__", "window.__data__"];
 

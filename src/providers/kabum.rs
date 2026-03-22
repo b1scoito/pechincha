@@ -65,7 +65,7 @@ impl Provider for Kabum {
     }
 }
 
-fn parse_next_data(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
     let start = html
         .find(marker)

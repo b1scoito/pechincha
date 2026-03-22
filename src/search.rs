@@ -109,7 +109,7 @@ impl SearchOrchestrator {
 
         // CDP-first: if browser is available, fetch all pages concurrently via CDP
         // then let each provider parse its HTML
-        let (mut all_products, mut errors) = if let Some(cdp_port) = self.cdp_port {
+        let (mut all_products, errors) = if let Some(cdp_port) = self.cdp_port {
             self.search_cdp(cdp_port, &active, query).await
         } else {
             self.search_wreq(&active, query).await
@@ -256,7 +256,7 @@ impl SearchOrchestrator {
 
                         // Also set MSRP on other products from the same domain
                         // that don't have MSRP yet
-                        if let Some(msrp) = insight.msrp_usd() {
+                        if let Some(_msrp) = insight.msrp_usd() {
                             let domain = insight.domain;
                             let target_provider = if domain == crate::keepa::DOMAIN_US {
                                 ProviderId::AmazonUS

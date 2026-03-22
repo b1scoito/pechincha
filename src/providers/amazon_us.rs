@@ -72,7 +72,7 @@ impl Provider for AmazonUS {
     }
 }
 
-fn parse_amazon_us_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let document = Html::parse_document(html);
 
     let card_selector =

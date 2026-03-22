@@ -1,7 +1,7 @@
 //! CDP-first search engine. Opens all provider tabs concurrently in the user's
 //! real browser, waits for JS to render, extracts HTML from each.
 
-use chaser_oxide::{Browser, Handler};
+use chaser_oxide::Browser;
 use futures::StreamExt;
 use std::sync::Arc;
 use std::time::Duration;

@@ -86,7 +86,7 @@ pub trait Provider: Send + Sync {
 
     /// CDP mode: parse pre-fetched HTML from the real browser.
     /// Default implementation calls search() as fallback.
-    fn parse_html(&self, html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+    fn parse_html(&self, _html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
         // Default: providers that haven't implemented parse_html yet
         Err(ProviderError::Parse("parse_html not implemented for this provider".into()))
     }
