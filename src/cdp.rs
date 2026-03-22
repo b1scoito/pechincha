@@ -86,11 +86,13 @@ pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderErro
     Ok(html)
 }
 
-/// Amazon US detail page data: price, shipping, and MSRP.
+/// Amazon US detail page data: price, shipping, MSRP, and seller.
 pub struct AmazonUsDetails {
     pub product_price: Option<rust_decimal::Decimal>,
     pub shipping_import: Option<rust_decimal::Decimal>,
     pub msrp: Option<rust_decimal::Decimal>,
+    pub sold_by: Option<String>,
+    pub ships_from: Option<String>,
 }
 
 /// Fetch Amazon US product detail page and extract price, shipping, and MSRP.
@@ -130,29 +132,40 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
                 productPrice = whole + '.' + fraction;
             }
 
-            // MSRP / List Price — strikethrough price in the MAIN price area only
+            // MSRP / List Price extraction — multiple strategies
             let msrp = null;
-            // Try the core price display area first (most reliable)
-            const corePrice = document.querySelector('#corePriceDisplay_desktop_feature_div, #corePrice_desktop');
-            if (corePrice) {
-                const strikeEl = corePrice.querySelector('span[data-a-strike="true"] .a-offscreen');
-                if (strikeEl) {
-                    const m = strikeEl.textContent.match(/\$(\d+[\.,]\d+)/);
-                    if (m) msrp = m[1];
+
+            // Strategy 1: "List: $XXX.XX" in a-offscreen spans (Amazon's hidden accessible text)
+            const offscreenSpans = document.querySelectorAll('.a-offscreen');
+            for (const span of offscreenSpans) {
+                const t = span.textContent || '';
+                const m = t.match(/List:\s*\$(\d+[\.,]\d+)/);
+                if (m) {
+                    const candidate = parseFloat(m[1].replace(',', ''));
+                    // MSRP must be higher than selling price
+                    if (!productPrice || candidate > parseFloat(productPrice)) {
+                        msrp = m[1];
+                        break;
+                    }
                 }
-                // Also check for "List Price:" within the core price area
-                if (!msrp) {
-                    const listEl = corePrice.querySelector('.basisPrice .a-offscreen');
-                    if (listEl) {
-                        const m = listEl.textContent.match(/\$(\d+[\.,]\d+)/);
+            }
+
+            // Strategy 2: strikethrough price in core price area
+            if (!msrp) {
+                const corePrice = document.querySelector('#corePriceDisplay_desktop_feature_div, #corePrice_desktop');
+                if (corePrice) {
+                    const strikeEl = corePrice.querySelector('span[data-a-strike="true"] .a-offscreen');
+                    if (strikeEl) {
+                        const m = strikeEl.textContent.match(/\$(\d+[\.,]\d+)/);
                         if (m) msrp = m[1];
                     }
                 }
             }
-            // Fallback: "List Price:" in the page text, but only if price > product price
+
+            // Strategy 3: "List Price: $XXX.XX" in page text
             if (!msrp && productPrice) {
                 const listMatch = all.match(/List\s*Price:\s*\$(\d+[\.,]\d+)/);
-                if (listMatch && parseFloat(listMatch[1]) > parseFloat(productPrice)) {
+                if (listMatch && parseFloat(listMatch[1].replace(',','')) > parseFloat(productPrice)) {
                     msrp = listMatch[1];
                 }
             }
@@ -164,9 +177,47 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
             const shipping = all.match(/Shipping[^$]*\$(\d+[\.,]\d+)/i);
             const importFee = all.match(/Import\s*(?:Fees?|Charges?|Deposit)[^$]*\$(\d+[\.,]\d+)/i);
 
+            // Seller info from the "Ships from and sold by" section
+            let soldBy = null;
+            let shipsFrom = null;
+            const sfsbEl = document.querySelector('#shipsFromSoldBy_feature_div, #merchant-info');
+            if (sfsbEl) {
+                const text = sfsbEl.innerText;
+                const soldMatch = text.match(/(?:Sold|Vendido)\s+(?:by|por)\s+([^\n]+)/i);
+                if (soldMatch) soldBy = soldMatch[1].trim();
+                const shipMatch = text.match(/(?:Ships|Enviado|Fulfilled)\s+(?:from|by|de|por)\s+([^\n]+)/i);
+                if (shipMatch) shipsFrom = shipMatch[1].trim();
+            }
+            // Fallback: tabular buybox
+            if (!soldBy) {
+                const buyboxRows = document.querySelectorAll('#tabular-buybox-container .tabular-buybox-text a');
+                for (const a of buyboxRows) {
+                    const t = a.textContent.trim();
+                    if (t && t.length > 2 && t.length < 60) {
+                        if (!soldBy) soldBy = t;
+                        else if (!shipsFrom) shipsFrom = t;
+                    }
+                }
+            }
+
+            // Keepa data — if the extension is loaded, try to get the List Price from it
+            let keepaMsrp = null;
+            const keepaEl = document.querySelector('#keepa');
+            if (keepaEl && !msrp) {
+                // Keepa shows prices in its chart tooltip or in injected elements
+                const keepaText = keepaEl.innerText || '';
+                const keepaMatch = keepaText.match(/List\s*Price[:\s]*\$(\d+[\.,]\d+)/i);
+                if (keepaMatch) keepaMsrp = keepaMatch[1];
+            }
+
+            // Use Keepa MSRP if we didn't find one from Amazon
+            if (!msrp && keepaMsrp) msrp = keepaMsrp;
+
             return JSON.stringify({
                 productPrice: productPrice,
                 msrp: msrp,
+                soldBy: soldBy,
+                shipsFrom: shipsFrom,
                 combined: combined ? combined[1] : null,
                 shipping: shipping ? shipping[1] : null,
                 importFee: importFee ? importFee[1] : null,
@@ -206,7 +257,10 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
         if total > rust_decimal::Decimal::ZERO { Some(total) } else { None }
     };
 
-    Some(AmazonUsDetails { product_price, shipping_import, msrp })
+    let sold_by = data["soldBy"].as_str().map(|s| s.to_string());
+    let ships_from = data["shipsFrom"].as_str().map(|s| s.to_string());
+
+    Some(AmazonUsDetails { product_price, shipping_import, msrp, sold_by, ships_from })
 }
 
 /// Fetch multiple pages concurrently — opens all tabs at once.

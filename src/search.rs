@@ -159,6 +159,17 @@ impl SearchOrchestrator {
                             info!(idx = idx, msrp_usd = %msrp, "Got Amazon US MSRP");
                         }
 
+                        // Store seller info
+                        if let Some(seller) = details.sold_by {
+                            let ships = details.ships_from.unwrap_or_default();
+                            info!(idx = idx, sold_by = %seller, ships_from = %ships, "Got Amazon US seller");
+                            all_products[idx].seller = Some(crate::models::SellerInfo {
+                                name: seller,
+                                reputation: None,
+                                official_store: false,
+                            });
+                        }
+
                         // Set real shipping + import charges
                         if let Some(ship_import) = details.shipping_import {
                             let ship_import_brl = ship_import * exchange_rate;
