@@ -134,7 +134,7 @@ fn try_extract_dida_data(html: &str, max_results: usize) -> Option<Vec<Product>>
                 .pointer("/fields/mods/itemList/content")
                 .and_then(|v| v.as_array())
             {
-                for item in item_list.iter().take(max_results) {
+                for item in item_list.iter().take(50) {
                     if let Some(p) = parse_ali_item(item) {
                         products.push(p);
                     }

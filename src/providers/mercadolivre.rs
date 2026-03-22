@@ -59,7 +59,7 @@ fn parse_ml_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provide
 
     let mut products = Vec::new();
 
-    for card in document.select(&card_selector).take(max_results) {
+    for card in document.select(&card_selector).take(50) {
         let title_el = match card.select(&title_selector).next() {
             Some(el) => el,
             None => continue,

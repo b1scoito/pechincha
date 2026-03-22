@@ -86,7 +86,7 @@ fn parse_next_data(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
 
     let mut products = Vec::new();
 
-    for item in items.iter().take(max_results) {
+    for item in items.iter().take(50) {
         let name = item["name"].as_str().unwrap_or_default().to_string();
         if name.is_empty() {
             continue;

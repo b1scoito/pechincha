@@ -248,7 +248,7 @@ fn try_extract_shopee_json(html: &str, max_results: usize) -> Option<Vec<Product
                 // Look for items array in the data
                 if let Some(items) = find_items_array(&data) {
                     let mut products = Vec::new();
-                    for item in items.iter().take(max_results) {
+                    for item in items.iter().take(50) {
                         let name = item["name"]
                             .as_str()
                             .or_else(|| item["item_basic"]["name"].as_str())

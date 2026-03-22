@@ -371,6 +371,18 @@ impl SearchOrchestrator {
             SortOrder::Relevance => {}
         }
 
+        // Apply per-provider result limit AFTER filtering and sorting
+        // This ensures the best N results per provider survive, not just the first N parsed
+        if query.max_results < 50 {
+            let max = query.max_results;
+            let mut provider_counts = std::collections::HashMap::new();
+            all_products.retain(|p| {
+                let count = provider_counts.entry(p.provider).or_insert(0usize);
+                *count += 1;
+                *count <= max
+            });
+        }
+
         let query_time = start.elapsed();
         info!(
             results = all_products.len(),

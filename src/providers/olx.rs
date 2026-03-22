@@ -82,7 +82,7 @@ fn parse_next_data(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
 
     let mut products = Vec::new();
 
-    for ad in ads.iter().take(max_results) {
+    for ad in ads.iter().take(50) {
         let title = ad["subject"]
             .as_str()
             .or_else(|| ad["title"].as_str())

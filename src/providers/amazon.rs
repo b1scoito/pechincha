@@ -86,7 +86,7 @@ fn parse_amazon_br_html(html: &str, max_results: usize) -> Result<Vec<Product>, 
 
     let mut products = Vec::new();
 
-    for card in document.select(&card_selector).take(max_results) {
+    for card in document.select(&card_selector).take(50) {
         let mut title = card
             .select(&title_selector)
             .next()

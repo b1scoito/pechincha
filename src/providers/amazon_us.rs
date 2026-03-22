@@ -86,7 +86,7 @@ fn parse_amazon_us_html(html: &str, max_results: usize) -> Result<Vec<Product>, 
 
     let mut products = Vec::new();
 
-    for card in document.select(&card_selector).take(max_results) {
+    for card in document.select(&card_selector).take(50) {
         // Try h2 span first, fallback to image alt for full product name
         let mut title = card
             .select(&title_selector)
