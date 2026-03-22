@@ -107,6 +107,39 @@ fn parse_amazon_us_html(html: &str, max_results: usize) -> Result<Vec<Product>, 
             continue;
         }
 
+        let asin = card.value().attr("data-asin").unwrap_or("").to_string();
+        if asin.is_empty() {
+            continue;
+        }
+
+        // Get link — skip sponsored ads (link="#" or empty)
+        let link = card
+            .select(&link_selector)
+            .next()
+            .and_then(|el| el.value().attr("href"))
+            .filter(|href| *href != "#" && !href.is_empty())
+            .map(|href| {
+                if href.starts_with('/') {
+                    format!("https://www.amazon.com{href}")
+                } else {
+                    href.to_string()
+                }
+            });
+
+        // Skip sponsored ads — they have link="#" and no real product page
+        let url = match link {
+            Some(l) => l,
+            None => format!("https://www.amazon.com/dp/{asin}"),
+        };
+
+        // Sponsored ads typically have "#" links — check if this is one
+        let card_html = card.html();
+        let is_sponsored = card_html.contains("Sponsored") || card_html.contains("AdHolder");
+        if is_sponsored {
+            continue;
+        }
+
+        // Price — may be empty for "See options" products (price fetched from detail page later)
         let price_whole = card
             .select(&price_whole_selector)
             .next()
@@ -126,30 +159,11 @@ fn parse_amazon_us_html(html: &str, max_results: usize) -> Result<Vec<Product>, 
             .map(|el| el.text().collect::<String>().trim().to_string())
             .unwrap_or_else(|| "00".to_string());
 
-        if price_whole.is_empty() {
-            continue;
-        }
-
-        // Amazon US prices are in USD (format: $549.99 -> whole=549, fraction=99)
-        let price_str = format!("{price_whole}.{price_fraction}");
-        let price_usd: Decimal = price_str.parse().unwrap_or(Decimal::ZERO);
-
-        if price_usd == Decimal::ZERO {
-            continue;
-        }
-
-        let link = card
-            .select(&link_selector)
-            .next()
-            .and_then(|el| el.value().attr("href"))
-            .map(|href| {
-                if href.starts_with('/') {
-                    format!("https://www.amazon.com{href}")
-                } else {
-                    href.to_string()
-                }
-            })
-            .unwrap_or_default();
+        let price_usd: Decimal = if price_whole.is_empty() {
+            Decimal::ZERO // Will be fetched from detail page
+        } else {
+            format!("{price_whole}.{price_fraction}").parse().unwrap_or(Decimal::ZERO)
+        };
 
         let image = card
             .select(&img_selector)
@@ -163,14 +177,6 @@ fn parse_amazon_us_html(html: &str, max_results: usize) -> Result<Vec<Product>, 
                 .next()
                 .and_then(|s| s.parse::<f32>().ok())
         });
-
-        let asin = card.value().attr("data-asin").unwrap_or("").to_string();
-
-        let url = if link.is_empty() && !asin.is_empty() {
-            format!("https://www.amazon.com/dp/{asin}")
-        } else {
-            link
-        };
 
         // Price is in USD — BRL conversion will be done by the orchestrator
         // Tax: international purchase, NOT in Remessa Conforme (Amazon US is not enrolled)

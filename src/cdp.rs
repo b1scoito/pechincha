@@ -86,9 +86,9 @@ pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderErro
     Ok(html)
 }
 
-/// Fetch a product detail page and extract shipping + import charges.
-/// Returns (shipping_import_usd, detail_url) if found.
-pub async fn fetch_shipping_cost(cdp_port: u16, product_url: &str) -> Option<rust_decimal::Decimal> {
+/// Fetch Amazon US product detail page and extract price + shipping + import charges.
+/// Returns (product_price_usd, shipping_import_usd) — either or both may be present.
+pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option<(Option<rust_decimal::Decimal>, Option<rust_decimal::Decimal>)> {
     let browser = get_browser(cdp_port).await.ok()?;
 
     let page = browser.new_page(product_url).await.ok()?;
@@ -109,19 +109,30 @@ pub async fn fetch_shipping_cost(cdp_port: u16, product_url: &str) -> Option<rus
     ).await;
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    // Extract shipping + import charges from the page
+    // Extract product price + shipping/import from the detail page
     let result = page.evaluate(
         r#"(() => {
             const all = document.body?.innerText || '';
 
-            // Try to get the combined "Shipping & Import Charges" amount
+            // Product price — look for the main price display
+            const priceEl = document.querySelector('#corePriceDisplay_desktop_feature_div .a-price-whole, #corePrice_desktop .a-price-whole, .a-price-whole');
+            let productPrice = null;
+            if (priceEl) {
+                const whole = priceEl.textContent.replace(/[,\.]/g, '').trim();
+                const fractionEl = priceEl.parentElement?.querySelector('.a-price-fraction');
+                const fraction = fractionEl ? fractionEl.textContent.trim() : '00';
+                productPrice = whole + '.' + fraction;
+            }
+
+            // Shipping & Import Charges combined
             const combined = all.match(/\$(\d+[\.,]\d+)\s*Shipping\s*&?\s*Import\s*(?:Charges|Fees)/i);
 
-            // Also try to get the breakdown from the Details popup
+            // Breakdown from Details popup
             const shipping = all.match(/Shipping[^$]*\$(\d+[\.,]\d+)/i);
             const importFee = all.match(/Import\s*(?:Fees?|Charges?|Deposit)[^$]*\$(\d+[\.,]\d+)/i);
 
             return JSON.stringify({
+                productPrice: productPrice,
                 combined: combined ? combined[1] : null,
                 shipping: shipping ? shipping[1] : null,
                 importFee: importFee ? importFee[1] : null,
@@ -131,7 +142,6 @@ pub async fn fetch_shipping_cost(cdp_port: u16, product_url: &str) -> Option<rus
 
     let _ = page.close().await;
 
-    // Parse the result — EvaluationResult wraps the JS return value
     let json_str = match result {
         Ok(eval_result) => {
             let val = eval_result.value().cloned().unwrap_or(serde_json::Value::Null);
@@ -141,26 +151,26 @@ pub async fn fetch_shipping_cost(cdp_port: u16, product_url: &str) -> Option<rus
     };
     let data: serde_json::Value = serde_json::from_str(&json_str).ok()?;
 
-    // Prefer the combined amount (shipping + import together)
-    if let Some(combined) = data["combined"].as_str() {
-        let cleaned = combined.replace(',', "");
-        return cleaned.parse::<rust_decimal::Decimal>().ok();
-    }
+    // Product price
+    let product_price: Option<rust_decimal::Decimal> = data["productPrice"]
+        .as_str()
+        .and_then(|s| s.replace(',', "").parse().ok());
 
-    // Fallback: sum shipping + import separately
-    let shipping: rust_decimal::Decimal = data["shipping"].as_str()
-        .and_then(|s| s.replace(',', "").parse().ok())
-        .unwrap_or_default();
-    let import: rust_decimal::Decimal = data["importFee"].as_str()
-        .and_then(|s| s.replace(',', "").parse().ok())
-        .unwrap_or_default();
-
-    let total = shipping + import;
-    if total > rust_decimal::Decimal::ZERO {
-        Some(total)
+    // Shipping + import charges
+    let shipping_total = if let Some(combined) = data["combined"].as_str() {
+        combined.replace(',', "").parse::<rust_decimal::Decimal>().ok()
     } else {
-        None
-    }
+        let shipping: rust_decimal::Decimal = data["shipping"].as_str()
+            .and_then(|s| s.replace(',', "").parse().ok())
+            .unwrap_or_default();
+        let import: rust_decimal::Decimal = data["importFee"].as_str()
+            .and_then(|s| s.replace(',', "").parse().ok())
+            .unwrap_or_default();
+        let total = shipping + import;
+        if total > rust_decimal::Decimal::ZERO { Some(total) } else { None }
+    };
+
+    Some((product_price, shipping_total))
 }
 
 /// Fetch multiple pages concurrently — opens all tabs at once.

@@ -128,41 +128,57 @@ impl SearchOrchestrator {
             if !amz_us_products.is_empty() {
                 info!(
                     count = amz_us_products.len(),
-                    "Fetching Amazon US shipping costs from detail pages"
+                    "Fetching Amazon US prices + shipping from detail pages"
                 );
 
-                // Fetch shipping costs concurrently
-                let mut shipping_handles = Vec::new();
+                // Fetch detail pages concurrently
+                let mut handles = Vec::new();
                 for (idx, url) in amz_us_products {
                     let handle = tokio::spawn(async move {
-                        let cost = crate::cdp::fetch_shipping_cost(cdp_port, &url).await;
-                        (idx, cost)
+                        let details = crate::cdp::fetch_amazon_us_details(cdp_port, &url).await;
+                        (idx, details)
                     });
-                    shipping_handles.push(handle);
+                    handles.push(handle);
                 }
 
-                for handle in shipping_handles {
-                    if let Ok((idx, Some(shipping_usd))) = handle.await {
-                        let shipping_brl = shipping_usd * exchange_rate;
-                        all_products[idx].price.shipping_cost = Some(shipping_brl);
-                        // Amazon US "Shipping & Import Charges" includes BOTH shipping and import duty
-                        // So we set taxes_included=true and use shipping_cost for the combined charge
-                        all_products[idx].price.tax = TaxInfo {
-                            remessa_conforme: false,
-                            taxes_included: true, // Amazon's charge includes import duty
-                            import_tax: None,
-                            icms: None,
-                            total_tax: Decimal::ZERO, // Included in shipping_cost
-                            tax_regime: TaxRegime::InternationalStandard,
-                        };
-                        debug!(
-                            idx = idx,
-                            shipping_usd = %shipping_usd,
-                            shipping_brl = %shipping_brl,
-                            "Got Amazon US shipping cost"
-                        );
+                for handle in handles {
+                    if let Ok((idx, Some((price_usd, shipping_usd)))) = handle.await {
+                        // Fill in product price if it was missing from search results
+                        if let Some(price) = price_usd {
+                            if all_products[idx].price.listed_price == Decimal::ZERO {
+                                all_products[idx].price.listed_price = price;
+                                all_products[idx].price.price_brl = price; // Will be converted below
+                                info!(idx = idx, price_usd = %price, "Got Amazon US product price");
+                            }
+                        }
+
+                        // Set real shipping + import charges
+                        if let Some(ship_import) = shipping_usd {
+                            let ship_import_brl = ship_import * exchange_rate;
+                            all_products[idx].price.shipping_cost = Some(ship_import_brl);
+                            // Amazon US "Shipping & Import Charges" includes BOTH
+                            all_products[idx].price.tax = TaxInfo {
+                                remessa_conforme: false,
+                                taxes_included: true,
+                                import_tax: None,
+                                icms: None,
+                                total_tax: Decimal::ZERO, // Included in shipping_cost
+                                tax_regime: TaxRegime::InternationalStandard,
+                            };
+                            info!(
+                                idx = idx,
+                                shipping_usd = %ship_import,
+                                shipping_brl = %ship_import_brl,
+                                "Got Amazon US shipping + import"
+                            );
+                        }
                     }
                 }
+
+                // Remove Amazon US products that still have zero price (couldn't fetch)
+                all_products.retain(|p| {
+                    p.provider != ProviderId::AmazonUS || p.price.listed_price > Decimal::ZERO
+                });
             }
         }
 
