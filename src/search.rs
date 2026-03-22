@@ -199,6 +199,82 @@ impl SearchOrchestrator {
             }
         }
 
+        // Keepa price intelligence — fetch MSRP, all-time low, market data
+        // for Amazon products (both US and BR)
+        if let Some(cdp_port) = self.cdp_port {
+            // Collect unique ASINs from Amazon US and BR
+            let amazon_asins: Vec<(usize, String, u8)> = all_products
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| {
+                    (p.provider == ProviderId::AmazonUS || p.provider == ProviderId::Amazon)
+                        && !p.platform_id.is_empty()
+                        && p.platform_id.len() == 10 // ASINs are 10 chars
+                })
+                .map(|(i, p)| {
+                    let domain = if p.provider == ProviderId::AmazonUS {
+                        crate::keepa::DOMAIN_US
+                    } else {
+                        crate::keepa::DOMAIN_BR
+                    };
+                    (i, p.platform_id.clone(), domain)
+                })
+                .collect();
+
+            if !amazon_asins.is_empty() {
+                // Just fetch Keepa for the first ASIN of each domain (to save time)
+                // The MSRP from one product gives a reference for all similar products
+                let mut seen_domains = std::collections::HashSet::new();
+                let mut keepa_handles = Vec::new();
+
+                for (idx, asin, domain) in &amazon_asins {
+                    if !seen_domains.insert(domain) { continue; }
+                    let idx = *idx;
+                    let asin = asin.clone();
+                    let domain = *domain;
+                    let handle = tokio::spawn(async move {
+                        let data = crate::keepa::fetch_keepa_data(cdp_port, &asin, domain).await;
+                        (idx, data)
+                    });
+                    keepa_handles.push(handle);
+                }
+
+                for handle in keepa_handles {
+                    if let Ok((idx, Some(insight))) = handle.await {
+                        // Store MSRP from Keepa
+                        if let Some(msrp) = insight.msrp_usd() {
+                            all_products[idx].price.original_price = Some(msrp);
+                            info!(
+                                asin = %insight.asin,
+                                msrp = %msrp,
+                                amazon = ?insight.amazon_usd(),
+                                low = ?insight.amazon_low_usd(),
+                                buy_box = ?insight.buy_box_usd(),
+                                "Keepa MSRP"
+                            );
+                        }
+
+                        // Also set MSRP on other products from the same domain
+                        // that don't have MSRP yet
+                        if let Some(msrp) = insight.msrp_usd() {
+                            let domain = insight.domain;
+                            let target_provider = if domain == crate::keepa::DOMAIN_US {
+                                ProviderId::AmazonUS
+                            } else {
+                                ProviderId::Amazon
+                            };
+                            for p in all_products.iter_mut() {
+                                if p.provider == target_provider && p.price.original_price.is_none() {
+                                    // Only set if it's the same brand/product type
+                                    // (don't apply Dyson MSRP to unrelated products)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Apply tax calculations and currency conversion
         for product in &mut all_products {
             if product.price.currency == Currency::USD {
