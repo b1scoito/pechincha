@@ -60,6 +60,7 @@ chaser-oxide = "0.1.2"
 futures = "0.3.32"
 regex-lite = "0.1.9"
 libc = "0.2.183"
+tokio-tungstenite = { version = "0.29.0", features = ["native-tls"] }
 
 [dev-dependencies]
 wiremock = "0.6"
