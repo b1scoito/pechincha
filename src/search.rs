@@ -134,6 +134,7 @@ impl SearchOrchestrator {
                 // Fetch detail pages concurrently
                 let mut handles = Vec::new();
                 for (idx, url) in amz_us_products {
+                    debug!(idx = idx, url = %url, "Visiting Amazon US detail page");
                     let handle = tokio::spawn(async move {
                         let details = crate::cdp::fetch_amazon_us_details(cdp_port, &url).await;
                         (idx, details)
