@@ -84,10 +84,11 @@ pub async fn fetch_keepa_data(cdp_port: u16, asin: &str, domain: u8) -> Option<K
     ).await.ok()?;
     tokio::spawn(async move { while let Some(_) = handler.next().await {} });
 
-    let page = browser.new_page("about:blank").await.ok()?;
+    // Navigate directly to Keepa — no need for about:blank intermediate
+    let page = browser.new_page(&url).await.ok()?;
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
-    // Get the tab's WebSocket URL
+    // Get the tab's WebSocket URL by finding it in targets
     let client = wreq::Client::builder().build().ok()?;
     let targets: Vec<serde_json::Value> = client
         .get(format!("http://127.0.0.1:{cdp_port}/json/list"))
@@ -95,28 +96,33 @@ pub async fn fetch_keepa_data(cdp_port: u16, asin: &str, domain: u8) -> Option<K
         .json().await.ok()?;
 
     let page_ws = targets.iter()
-        .find(|t| t["url"].as_str() == Some("about:blank") && t["type"].as_str() == Some("page"))
+        .find(|t| {
+            let u = t["url"].as_str().unwrap_or("");
+            u.contains("keepa.com") && u.contains(asin) && t["type"].as_str() == Some("page")
+        })
         .and_then(|t| t["webSocketDebuggerUrl"].as_str())
         .map(|s| s.to_string())?;
 
     let (mut ws, _) = connect_async(&page_ws).await.ok()?;
 
-    // Enable network monitoring
+    // Enable network monitoring — with timeout to avoid hanging
     let cmd = serde_json::json!({"id": 1, "method": "Network.enable", "params": {}});
     ws.send(tokio_tungstenite::tungstenite::Message::Text(cmd.to_string().into())).await.ok()?;
-    ws.next().await;
+    // Read response with timeout
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(3), ws.next()).await;
 
-    // Navigate to Keepa
-    let cmd = serde_json::json!({"id": 2, "method": "Page.navigate", "params": {"url": url}});
-    ws.send(tokio_tungstenite::tungstenite::Message::Text(cmd.to_string().into())).await.ok()?;
+    // Page is already navigating — just wait for data
 
     // Listen for the large WebSocket frame containing product data
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(12);
+    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(15);
     let mut result = None;
 
     loop {
-        if tokio::time::Instant::now() > deadline { break; }
-        let timeout = tokio::time::timeout(std::time::Duration::from_millis(100), ws.next()).await;
+        if tokio::time::Instant::now() > deadline {
+            warn!("Keepa data timeout for {asin}");
+            break;
+        }
+        let timeout = tokio::time::timeout(std::time::Duration::from_secs(2), ws.next()).await;
         if let Ok(Some(Ok(msg))) = timeout {
             let resp: serde_json::Value = serde_json::from_str(&msg.to_string()).unwrap_or_default();
             if resp["method"].as_str() != Some("Network.webSocketFrameReceived") { continue; }

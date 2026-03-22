@@ -96,6 +96,7 @@ impl SearchOrchestrator {
         }
 
         let mode = if self.cdp_port.is_some() { "CDP" } else { "wreq" };
+        eprintln!("Searching {} providers...", active.len());
         info!(
             providers = active.len(),
             query = %query.query,
@@ -126,6 +127,7 @@ impl SearchOrchestrator {
                 .collect();
 
             if !amz_us_products.is_empty() {
+                eprintln!("Fetching Amazon US shipping costs ({} products)...", amz_us_products.len());
                 info!(
                     count = amz_us_products.len(),
                     "Fetching Amazon US prices + shipping from detail pages"
@@ -222,8 +224,8 @@ impl SearchOrchestrator {
                 .collect();
 
             if !amazon_asins.is_empty() {
+                eprintln!("Fetching Keepa price intelligence...");
                 // Just fetch Keepa for the first ASIN of each domain (to save time)
-                // The MSRP from one product gives a reference for all similar products
                 let mut seen_domains = std::collections::HashSet::new();
                 let mut keepa_handles = Vec::new();
 
@@ -233,7 +235,11 @@ impl SearchOrchestrator {
                     let asin = asin.clone();
                     let domain = *domain;
                     let handle = tokio::spawn(async move {
-                        let data = crate::keepa::fetch_keepa_data(cdp_port, &asin, domain).await;
+                        // 20s timeout for Keepa — it can hang if Cloudflare blocks
+                        let data = tokio::time::timeout(
+                            std::time::Duration::from_secs(20),
+                            crate::keepa::fetch_keepa_data(cdp_port, &asin, domain)
+                        ).await.ok().flatten();
                         (idx, data)
                     });
                     keepa_handles.push(handle);
