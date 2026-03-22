@@ -97,13 +97,25 @@ pub struct AmazonUsDetails {
 
 /// Fetch Amazon US product detail page and extract price, shipping, and MSRP.
 pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option<AmazonUsDetails> {
+    debug!("Amazon US detail: connecting...");
     let browser = get_browser(cdp_port).await.ok()?;
 
-    let page = browser.new_page(product_url).await.ok()?;
+    debug!("Amazon US detail: opening page...");
+    let page = match tokio::time::timeout(
+        Duration::from_secs(10),
+        browser.new_page(product_url)
+    ).await {
+        Ok(Ok(p)) => p,
+        Ok(Err(e)) => { warn!("Amazon US detail page open failed: {}", e); return None; }
+        Err(_) => { warn!("Amazon US detail page open timed out"); return None; }
+    };
+
+    debug!("Amazon US detail: waiting for render...");
     tokio::time::sleep(RENDER_WAIT).await;
 
-    // Wait for page, then click "Details" to expand shipping breakdown
-    let _ = page.evaluate(
+    // Click "Details" to expand shipping breakdown (with timeout)
+    debug!("Amazon US detail: clicking Details...");
+    let _ = tokio::time::timeout(Duration::from_secs(5), page.evaluate(
         r#"(() => {
             const links = document.querySelectorAll('a, span');
             for (const el of links) {
@@ -114,11 +126,12 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
                 }
             }
         })()"#
-    ).await;
+    )).await;
     tokio::time::sleep(Duration::from_secs(2)).await;
 
     // Extract product price + shipping/import from the detail page
-    let result = page.evaluate(
+    debug!("Amazon US detail: extracting price data...");
+    let result = match tokio::time::timeout(Duration::from_secs(10), page.evaluate(
         r#"(() => {
             const all = document.body?.innerText || '';
 
@@ -223,9 +236,15 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
                 importFee: importFee ? importFee[1] : null,
             });
         })()"#
-    ).await;
+    )).await {
+        Ok(Ok(r)) => Ok(r),
+        Ok(Err(e)) => { warn!("Amazon US evaluate failed: {}", e); Err(()) }
+        Err(_) => { warn!("Amazon US evaluate timed out"); Err(()) }
+    };
 
+    debug!("Amazon US detail: closing tab...");
     let _ = page.close().await;
+    debug!("Amazon US detail: done");
 
     let json_str = match result {
         Ok(eval_result) => {

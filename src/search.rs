@@ -205,22 +205,16 @@ impl SearchOrchestrator {
         // for Amazon products (both US and BR)
         if let Some(cdp_port) = self.cdp_port {
             // Collect unique ASINs from Amazon US and BR
+            // Only fetch Keepa for Amazon US — BR prices don't need MSRP reference
             let amazon_asins: Vec<(usize, String, u8)> = all_products
                 .iter()
                 .enumerate()
                 .filter(|(_, p)| {
-                    (p.provider == ProviderId::AmazonUS || p.provider == ProviderId::Amazon)
+                    p.provider == ProviderId::AmazonUS
                         && !p.platform_id.is_empty()
-                        && p.platform_id.len() == 10 // ASINs are 10 chars
+                        && p.platform_id.len() == 10
                 })
-                .map(|(i, p)| {
-                    let domain = if p.provider == ProviderId::AmazonUS {
-                        crate::keepa::DOMAIN_US
-                    } else {
-                        crate::keepa::DOMAIN_BR
-                    };
-                    (i, p.platform_id.clone(), domain)
-                })
+                .map(|(i, p)| (i, p.platform_id.clone(), crate::keepa::DOMAIN_US))
                 .collect();
 
             if !amazon_asins.is_empty() {
