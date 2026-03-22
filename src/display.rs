@@ -97,22 +97,44 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
             };
             row.push(Cell::new(msrp_display));
 
-            // Savings column: compare total cost to reference MSRP converted to BRL
-            // For this we need the exchange rate — approximate from price_brl/listed_price
+            // Savings column: compare total cost to MSRP + import taxes
+            // "What would it cost at MSRP if imported properly?"
             let savings_display = if let Some(ref_msrp) = reference_msrp_usd {
-                // Estimate exchange rate from any USD product
                 let exchange_rate = results.products.iter()
                     .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
                     .map(|p| p.price.price_brl / p.price.listed_price)
                     .unwrap_or(Decimal::from(5));
 
                 let msrp_brl = ref_msrp * exchange_rate;
-                if product.price.total_cost < msrp_brl {
-                    let pct = ((msrp_brl - product.price.total_cost) * Decimal::from(100)) / msrp_brl;
-                    format!("-{:.0}%", pct).green().to_string()
+
+                // For international products: compare to MSRP + taxes (fair imported price)
+                // For domestic products: compare to MSRP in BRL directly (domestic markup)
+                let reference_total = if !product.domestic {
+                    // Apply import tax calculation to MSRP
+                    let tax_info = crate::tax::TaxCalculator::calculate(
+                        Some(ref_msrp),
+                        msrp_brl,
+                        false,  // not domestic
+                        false,  // not Remessa Conforme (Amazon US isn't)
+                        false,  // taxes not included
+                        exchange_rate,
+                    );
+                    msrp_brl + tax_info.total_tax
                 } else {
-                    let pct = ((product.price.total_cost - msrp_brl) * Decimal::from(100)) / msrp_brl;
-                    format!("+{:.0}%", pct).red().to_string()
+                    // Domestic: just compare to MSRP converted
+                    msrp_brl
+                };
+
+                if reference_total > Decimal::ZERO {
+                    if product.price.total_cost < reference_total {
+                        let pct = ((reference_total - product.price.total_cost) * Decimal::from(100)) / reference_total;
+                        format!("-{:.0}%", pct).green().to_string()
+                    } else {
+                        let pct = ((product.price.total_cost - reference_total) * Decimal::from(100)) / reference_total;
+                        format!("+{:.0}%", pct).red().to_string()
+                    }
+                } else {
+                    "—".to_string()
                 }
             } else {
                 "—".to_string()
@@ -125,18 +147,24 @@ pub fn print_results(results: &SearchResults, show_taxes: bool) {
 
     println!("{table}");
 
-    // MSRP reference line
+    // MSRP reference line with tax breakdown
     if let Some(msrp) = reference_msrp_usd {
         let exchange_rate = results.products.iter()
             .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
             .map(|p| p.price.price_brl / p.price.listed_price)
             .unwrap_or(Decimal::from(5));
         let msrp_brl = msrp * exchange_rate;
+        let tax_info = crate::tax::TaxCalculator::calculate(
+            Some(msrp), msrp_brl, false, false, false, exchange_rate,
+        );
+        let msrp_total = msrp_brl + tax_info.total_tax;
         println!(
-            "\n{} US${:.2} = {} (reference for savings calculation)",
+            "\n{} US${:.2} = {} + {} tax = {} imported",
             "MSRP:".bold(),
             msrp,
-            format_brl(msrp_brl).bold()
+            format_brl(msrp_brl),
+            format_brl(tax_info.total_tax),
+            format_brl(msrp_total).bold()
         );
     }
 
