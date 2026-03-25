@@ -251,8 +251,12 @@ fn scrape_rendered_html(html: &str, max_results: usize) -> Vec<Product> {
             break;
         }
 
-        // Card content goes from this position to the next card (or +3000 chars)
-        let card_end = card_positions.get(i + 1).copied().unwrap_or(pos + 4000).min(pos + 4000);
+        // Card content goes from this position to the next card (or +4000 bytes)
+        let mut card_end = card_positions.get(i + 1).copied().unwrap_or(pos + 4000).min(pos + 4000).min(html.len());
+        // Ensure we don't slice in the middle of a multi-byte UTF-8 character
+        while card_end < html.len() && !html.is_char_boundary(card_end) {
+            card_end += 1;
+        }
         let card = &html[pos..card_end];
 
         // Extract product ID
