@@ -284,14 +284,39 @@ fn print_msrp_reference(msrp: Decimal, exchange_rate: Decimal) {
     );
     let msrp_total = msrp_brl + tax_info.total_tax;
 
+    println!("  {}", "Import cost at MSRP".dimmed());
     println!(
-        "  {} US${:.2} = {} + {} tax = {} {}",
+        "  {}  US${:.2}  {}  {:.4}",
         "MSRP".dimmed(),
         msrp,
-        format_brl(msrp_brl).dimmed(),
-        format_brl(tax_info.total_tax).dimmed(),
-        format_brl(msrp_total).bold(),
-        "imported".dimmed()
+        "→".dimmed(),
+        format!("{} (USD/BRL {:.2})", format_brl(msrp_brl), exchange_rate).dimmed()
+    );
+    if let Some(import) = tax_info.import_tax {
+        let pct = if msrp_brl > Decimal::ZERO {
+            format!(" ({:.0}%)", (import * Decimal::from(100)) / msrp_brl)
+        } else {
+            String::new()
+        };
+        println!(
+            "  {}  {}{}",
+            "Import tax".dimmed(),
+            format_brl(import),
+            pct.dimmed()
+        );
+    }
+    if let Some(icms) = tax_info.icms {
+        println!(
+            "  {}  {} {}",
+            "ICMS".dimmed(),
+            format_brl(icms),
+            "(17% por dentro)".dimmed()
+        );
+    }
+    println!(
+        "  {}  {}",
+        "Total".dimmed(),
+        format_brl(msrp_total).bold()
     );
 }
 
