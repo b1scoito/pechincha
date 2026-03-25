@@ -240,10 +240,7 @@ impl SearchOrchestrator {
                 }
             }
 
-            // Remove Amazon BR products that still have zero price
-            all_products.retain(|p| {
-                p.provider != ProviderId::Amazon || p.price.listed_price > Decimal::ZERO
-            });
+            // Don't remove zero-price BR products yet — Keepa may fill the price later
         }
 
         // For AliExpress products: fetch exact tax from product detail pages.
@@ -427,6 +424,34 @@ impl SearchOrchestrator {
             } // else (score >= min_keepa_score)
             }
         }
+
+        // Fill missing prices from Keepa buy_box data.
+        // This handles Amazon BR products with "Ver opções de compra" where
+        // detail page extraction failed but Keepa has the real price.
+        for product in all_products.iter_mut() {
+            if product.price.listed_price == Decimal::ZERO && !product.keepa.is_empty() {
+                let own_domain = if product.provider == ProviderId::Amazon {
+                    crate::keepa::DOMAIN_BR
+                } else {
+                    crate::keepa::DOMAIN_US
+                };
+                if let Some(keepa_price) = product.keepa.iter()
+                    .find(|k| k.domain == own_domain)
+                    .and_then(|k| k.best_new_price())
+                {
+                    info!(
+                        asin = %product.platform_id,
+                        price = %keepa_price,
+                        "Filled price from Keepa buy_box"
+                    );
+                    product.price.listed_price = keepa_price;
+                    product.price.price_brl = keepa_price;
+                }
+            }
+        }
+
+        // Remove products that still have zero price after all enrichment
+        all_products.retain(|p| p.price.listed_price > Decimal::ZERO);
 
         // Apply tax calculations and currency conversion
         for product in &mut all_products {
