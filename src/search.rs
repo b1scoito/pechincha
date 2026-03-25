@@ -564,14 +564,20 @@ fn is_relevant(title: &str, query: &str) -> bool {
         return false;
     }
 
-    // Non-core: 50% match
+    // For short queries (≤3 tokens), require ALL tokens to match.
+    // "Moondrop Variations" must match both words, not just "Moondrop".
+    // For longer queries (4+), require 60% match to allow minor variations.
     let total = query_tokens.len();
     let matched = query_tokens
         .iter()
         .filter(|token| title_norm.contains(token.as_str()) || title_no_spaces.contains(token.as_str()))
         .count();
 
-    matched * 2 >= total
+    if total <= 3 {
+        matched == total // ALL tokens must match for short queries
+    } else {
+        matched * 5 >= total * 3 // 60% for longer queries
+    }
 }
 
 /// Score how well a product title matches the search query.
