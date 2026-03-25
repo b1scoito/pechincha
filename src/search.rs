@@ -274,6 +274,19 @@ impl SearchOrchestrator {
                     .then(b.3.cmp(&a.3)) // price (higher = actual product)
             });
 
+            // Log top candidates for debugging
+            for (i, (asin, score, reviews, _price, domain, title)) in candidates.iter().take(3).enumerate() {
+                debug!(
+                    rank = i + 1,
+                    asin = %asin,
+                    score = score,
+                    reviews = reviews,
+                    domain = domain,
+                    title = %truncate_str(title, 60),
+                    "Keepa candidate"
+                );
+            }
+
             // Take the single best ASIN — best title match with most reviews.
             // Skip if the best candidate has a very low title score (likely wrong product).
             let min_keepa_score = 50u32;
