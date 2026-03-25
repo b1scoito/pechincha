@@ -40,10 +40,11 @@ pub fn print_results(results: &SearchResults, query: &str) {
     // Find best price for highlighting
     let best_price = results.products.iter().map(|p| p.price.total_cost).min();
 
-    // Find reference MSRP from Keepa (any domain) or product data
+    // Find reference MSRP from Keepa (any domain) or product data.
+    // Track whether it's domestic (BRL) or international (USD).
+    let mut msrp_is_domestic = false;
     let reference_msrp_usd: Option<Decimal> = results.products.iter()
         .find_map(|p| {
-            // Try US MSRP first
             p.keepa.iter()
                 .find(|k| k.domain == crate::keepa::DOMAIN_US)
                 .and_then(|k| k.msrp())
@@ -54,7 +55,7 @@ pub fn print_results(results: &SearchResults, query: &str) {
                 p.keepa.iter()
                     .find(|k| k.domain == crate::keepa::DOMAIN_BR)
                     .and_then(|k| k.msrp())
-                    .map(|brl| brl * k_br_to_usd())
+                    .map(|brl| { msrp_is_domestic = true; brl * k_br_to_usd() })
             })
         })
         .or_else(|| {
@@ -62,6 +63,16 @@ pub fn print_results(results: &SearchResults, query: &str) {
                 .find(|p| p.price.original_price.is_some() && p.price.currency == Currency::USD)
                 .and_then(|p| p.price.original_price)
         });
+    // Also get the raw BRL MSRP for domestic display
+    let msrp_brl_raw: Option<Decimal> = if msrp_is_domestic {
+        results.products.iter().find_map(|p| {
+            p.keepa.iter()
+                .find(|k| k.domain == crate::keepa::DOMAIN_BR)
+                .and_then(|k| k.msrp())
+        })
+    } else {
+        None
+    };
 
     // Exchange rate for MSRP comparison
     let exchange_rate = results.products.iter()
@@ -72,7 +83,7 @@ pub fn print_results(results: &SearchResults, query: &str) {
     // Results list
     for (i, product) in results.products.iter().enumerate() {
         let is_best = best_price == Some(product.price.total_cost) && i == 0;
-        print_product_row(i + 1, product, is_best, reference_msrp_usd, exchange_rate);
+        print_product_row(i + 1, product, is_best, reference_msrp_usd, exchange_rate, msrp_is_domestic, msrp_brl_raw);
     }
 
     // Keepa international prices
@@ -80,7 +91,14 @@ pub fn print_results(results: &SearchResults, query: &str) {
 
     // MSRP reference
     if let Some(msrp) = reference_msrp_usd {
-        print_msrp_reference(msrp, exchange_rate);
+        if msrp_is_domestic {
+            // Domestic MSRP — just show the BRL price, no import calculation
+            if let Some(brl) = msrp_brl_raw {
+                println!("  {} {}", "MSRP".dimmed(), format_brl(brl).bold());
+            }
+        } else {
+            print_msrp_reference(msrp, exchange_rate);
+        }
     }
 
     // Links — full URLs for clicking
@@ -107,6 +125,8 @@ fn print_product_row(
     is_best: bool,
     msrp_usd: Option<Decimal>,
     exchange_rate: Decimal,
+    msrp_is_domestic: bool,
+    msrp_brl_raw: Option<Decimal>,
 ) {
     let total = format_brl(product.price.total_cost);
 
@@ -125,21 +145,33 @@ fn print_product_row(
         })
         .unwrap_or_default();
 
-    // Savings vs MSRP imported (consistent baseline for all products).
-    // "What would it cost to import this at MSRP?" is the universal reference.
-    let savings = msrp_usd.and_then(|msrp| {
-        let msrp_brl = msrp * exchange_rate;
-        let tax = crate::tax::TaxCalculator::calculate(
-            Some(msrp), msrp_brl, false, false, false, exchange_rate,
-        );
-        let reference = msrp_brl + tax.total_tax;
-        if reference > Decimal::ZERO {
-            let pct = ((product.price.total_cost - reference) * Decimal::from(100)) / reference;
-            Some(pct)
-        } else {
-            None
-        }
-    });
+    // Savings vs MSRP.
+    // Domestic MSRP: compare directly against BRL list price.
+    // International MSRP: compare against MSRP + import taxes.
+    let savings = if msrp_is_domestic {
+        msrp_brl_raw.and_then(|reference| {
+            if reference > Decimal::ZERO {
+                let pct = ((product.price.total_cost - reference) * Decimal::from(100)) / reference;
+                Some(pct)
+            } else {
+                None
+            }
+        })
+    } else {
+        msrp_usd.and_then(|msrp| {
+            let msrp_brl = msrp * exchange_rate;
+            let tax = crate::tax::TaxCalculator::calculate(
+                Some(msrp), msrp_brl, false, false, false, exchange_rate,
+            );
+            let reference = msrp_brl + tax.total_tax;
+            if reference > Decimal::ZERO {
+                let pct = ((product.price.total_cost - reference) * Decimal::from(100)) / reference;
+                Some(pct)
+            } else {
+                None
+            }
+        })
+    };
 
     // First line: rank, price, title
     let rank_str = format!("{:>2}", rank);
