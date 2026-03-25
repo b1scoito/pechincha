@@ -207,11 +207,11 @@ fn parse_ali_item(item: &serde_json::Value) -> Option<Product> {
             shipping_cost: None,
             tax: TaxInfo {
                 remessa_conforme: true,
-                taxes_included: true, // AliExpress shows tax-inclusive prices to BR buyers
+                taxes_included: false, // Search results show pre-tax prices; taxes added at checkout
                 import_tax: None,
                 icms: None,
                 total_tax: Decimal::ZERO,
-                tax_regime: TaxRegime::RemessaConformeOver50,
+                tax_regime: TaxRegime::Unknown, // Let tax calculator determine RC <$50 vs >$50
             },
             total_cost: price_brl,
             original_price: None,
