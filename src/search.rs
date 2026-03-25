@@ -619,12 +619,18 @@ fn title_match_score(title: &str, query: &str) -> u32 {
         }
     }
 
-    // Penalty: title contains "compatível", "substituição", "filtro", "peças", "acessório"
-    // — strong signals this is an accessory, not the product
-    let accessory_words = ["compativel", "compatível", "substituição", "substituicao",
+    // Penalty: accessories, bundles, and non-product items
+    let penalty_words = [
+        // Accessories
+        "compativel", "compatível", "substituição", "substituicao",
         "filtro", "filter", "peças", "pecas", "acessório", "acessorio",
-        "replacement", "attachment", "stand", "suporte", "bracket"];
-    for word in &accessory_words {
+        "replacement", "attachment", "stand", "suporte", "bracket",
+        // Bundles (we want the standalone product, not combos)
+        "bundle", "combo", "kit de", "kit com", "soundbar",
+        // Cases & covers
+        "case", "capa", "película", "pelicula", "protetor",
+    ];
+    for word in &penalty_words {
         if title_lower.contains(word) {
             score = score.saturating_sub(30);
         }
@@ -694,6 +700,8 @@ fn is_accessory_title(title: &str) -> bool {
         "hose", "mangueira", "tube", "tubo", "mount", "bracket",
         "compatível", "compativel", "compatible", "para aspirador",
         "ferramenta de", "tool for",
+        "bundle", "combo", "soundbar", "kit de", "kit com",
+        "case", "capa", "película", "pelicula", "protetor",
     ];
     accessory_patterns.iter().any(|pat| lower.contains(pat))
 }
