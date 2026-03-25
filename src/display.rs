@@ -2,6 +2,7 @@ use colored::Colorize;
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Cell, Color, ContentArrangement, Table};
 use rust_decimal::Decimal;
 
+use crate::keepa::KeepaInsight;
 use crate::models::{Currency, Product, SearchResults};
 use crate::providers::ProviderId;
 
@@ -15,7 +16,8 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
         return;
     }
 
-    // Check if any product has MSRP data
+    // Check if any product has Keepa data or MSRP
+    let has_keepa = results.products.iter().any(|p| !p.keepa.is_empty());
     let has_msrp = results.products.iter().any(|p| p.price.original_price.is_some());
 
     let mut table = Table::new();
@@ -26,6 +28,10 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
 
     // Header
     let mut headers = vec!["#", "Platform", "Product", "Price", "Ship+Tax", "Total", "★"];
+    if has_keepa {
+        headers.push("US Price");
+        headers.push("Best Int'l");
+    }
     if has_msrp {
         headers.push("MSRP");
         headers.push("Savings");
@@ -36,10 +42,19 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
     let best_price = results.products.iter().map(|p| p.price.total_cost).min();
     let worst_price = results.products.iter().map(|p| p.price.total_cost).max();
 
-    // Find reference MSRP (first product that has one — typically from Amazon US)
+    // Find reference MSRP — prefer Keepa US data, fallback to USD products
     let reference_msrp_usd: Option<Decimal> = results.products.iter()
-        .find(|p| p.price.original_price.is_some() && p.price.currency == Currency::USD)
-        .and_then(|p| p.price.original_price);
+        .find_map(|p| {
+            // First try Keepa US domain MSRP
+            p.keepa.iter()
+                .find(|k| k.domain == crate::keepa::DOMAIN_US)
+                .and_then(|k| k.msrp())
+        })
+        .or_else(|| {
+            results.products.iter()
+                .find(|p| p.price.original_price.is_some() && p.price.currency == Currency::USD)
+                .and_then(|p| p.price.original_price)
+        });
 
     for (i, product) in results.products.iter().enumerate() {
         let total_color = price_color(product.price.total_cost, best_price, worst_price);
@@ -68,7 +83,13 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
 
         let total = format_brl(product.price.total_cost);
         let rating = product.rating
-            .map(|r| format!("{:.1}", r))
+            .map(|r| {
+                if let Some(rc) = product.review_count {
+                    format!("{:.1} ({})", r, format_count(rc))
+                } else {
+                    format!("{:.1}", r)
+                }
+            })
             .unwrap_or_else(|| "—".to_string());
 
         let mut row: Vec<Cell> = vec![
@@ -81,24 +102,43 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
             Cell::new(rating),
         ];
 
+        if has_keepa {
+            // US Price column — show US Buy Box or Amazon price
+            let us_price = product.keepa.iter()
+                .find(|k| k.domain == crate::keepa::DOMAIN_US)
+                .and_then(|k| k.best_new_price())
+                .map(|p| format!("US${:.2}", p))
+                .unwrap_or_else(|| "—".to_string());
+            row.push(Cell::new(us_price));
+
+            // Best International — cheapest price across all non-BR domains (converted to USD)
+            let best_intl = find_cheapest_international(&product.keepa);
+            let best_intl_display = match best_intl {
+                Some((insight, usd_price)) => {
+                    format!("US${:.2} {}", usd_price, insight.domain_tld())
+                }
+                None => "—".to_string(),
+            };
+            row.push(Cell::new(best_intl_display));
+        }
+
         if has_msrp {
-            // MSRP column
+            // MSRP column — show product's own MSRP or reference MSRP
             let msrp_display = if let Some(msrp) = product.price.original_price {
-                if product.price.currency == Currency::USD {
+                // Only show as USD if it actually came from Keepa (has keepa data or is USD product)
+                if product.price.currency == Currency::USD || !product.keepa.is_empty() {
                     format!("US${:.2}", msrp)
                 } else {
                     format_brl(msrp)
                 }
             } else if let Some(ref_msrp) = reference_msrp_usd {
-                // Show reference MSRP from Amazon US for comparison
                 format!("US${:.2}", ref_msrp).dimmed().to_string()
             } else {
                 "—".to_string()
             };
             row.push(Cell::new(msrp_display));
 
-            // Savings column: compare total cost to MSRP + import taxes
-            // "What would it cost at MSRP if imported properly?"
+            // Savings column
             let savings_display = if let Some(ref_msrp) = reference_msrp_usd {
                 let exchange_rate = results.products.iter()
                     .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
@@ -107,21 +147,12 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
 
                 let msrp_brl = ref_msrp * exchange_rate;
 
-                // For international products: compare to MSRP + taxes (fair imported price)
-                // For domestic products: compare to MSRP in BRL directly (domestic markup)
                 let reference_total = if !product.domestic {
-                    // Apply import tax calculation to MSRP
                     let tax_info = crate::tax::TaxCalculator::calculate(
-                        Some(ref_msrp),
-                        msrp_brl,
-                        false,  // not domestic
-                        false,  // not Remessa Conforme (Amazon US isn't)
-                        false,  // taxes not included
-                        exchange_rate,
+                        Some(ref_msrp), msrp_brl, false, false, false, exchange_rate,
                     );
                     msrp_brl + tax_info.total_tax
                 } else {
-                    // Domestic: just compare to MSRP converted
                     msrp_brl
                 };
 
@@ -146,6 +177,11 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
     }
 
     println!("{table}");
+
+    // Keepa international price summary
+    if has_keepa {
+        print_keepa_summary(results);
+    }
 
     // MSRP reference line with tax breakdown
     if let Some(msrp) = reference_msrp_usd {
@@ -205,6 +241,65 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
     }
 }
 
+/// Print Keepa international price comparison for products that have it.
+fn print_keepa_summary(results: &SearchResults) {
+    // Find the first product with Keepa data
+    let product = match results.products.iter().find(|p| !p.keepa.is_empty()) {
+        Some(p) => p,
+        None => return,
+    };
+
+    println!("\n{}", "International Amazon prices (via Keepa):".bold());
+
+    // Sort by best new price in USD (normalized for comparison)
+    let mut insights: Vec<&KeepaInsight> = product.keepa.iter()
+        .filter(|k| k.best_new_price_usd().is_some())
+        .collect();
+    insights.sort_by(|a, b| {
+        a.best_new_price_usd().unwrap_or(Decimal::MAX)
+            .cmp(&b.best_new_price_usd().unwrap_or(Decimal::MAX))
+    });
+
+    for k in &insights {
+        let local_price = k.best_new_price().unwrap();
+        let usd_price = k.best_new_price_usd().unwrap();
+        let sym = k.currency_symbol();
+
+        let warehouse = k.warehouse_usd()
+            .map(|w| format!(" | Warehouse: US${:.2}", w))
+            .unwrap_or_default();
+        let refurb = k.refurbished_usd()
+            .map(|r| format!(" | Refurb: US${:.2}", r))
+            .unwrap_or_default();
+
+        let domain_str = format!("Amazon{:<8}", k.domain_tld());
+        let is_cheapest = insights.first().map(|f| f.domain) == Some(k.domain);
+
+        // Show local price + USD equivalent for non-USD domains
+        let price_str = if k.domain == crate::keepa::DOMAIN_US {
+            format!("US${:.2}", local_price)
+        } else {
+            format!("{}{:.2} (~US${:.2})", sym, local_price, usd_price)
+        };
+
+        let line = format!("  {} {}{}{}", domain_str, price_str, warehouse, refurb);
+
+        if is_cheapest {
+            println!("{}", line.green());
+        } else {
+            println!("{}", line);
+        }
+    }
+}
+
+/// Find the cheapest international (non-BR) price from Keepa insights, in USD.
+fn find_cheapest_international(keepa: &[KeepaInsight]) -> Option<(&KeepaInsight, Decimal)> {
+    keepa.iter()
+        .filter(|k| k.domain != crate::keepa::DOMAIN_BR)
+        .filter_map(|k| k.best_new_price_usd().map(|p| (k, p)))
+        .min_by_key(|(_, p)| *p)
+}
+
 pub fn print_json(results: &SearchResults) {
     let output = serde_json::json!({
         "products": results.products,
@@ -245,6 +340,14 @@ fn format_provider(id: ProviderId) -> String {
 
 fn format_brl(value: Decimal) -> String {
     format!("R$ {:.2}", value)
+}
+
+fn format_count(count: u32) -> String {
+    if count >= 1000 {
+        format!("{}k", count / 1000)
+    } else {
+        count.to_string()
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {

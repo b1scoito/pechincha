@@ -21,6 +21,10 @@ pub struct Product {
     pub sold_count: Option<u32>,
     pub domestic: bool,
     pub fetched_at: DateTime<Utc>,
+    /// Keepa price intelligence for this product across Amazon locales.
+    /// Index 0 is the product's own domain, rest are international prices.
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub keepa: Vec<crate::keepa::KeepaInsight>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

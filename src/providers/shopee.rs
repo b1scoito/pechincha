@@ -207,6 +207,7 @@ fn parse_shopee_html(html: &str, max_results: usize) -> Vec<Product> {
             sold_count: sold,
             domestic: true,
             fetched_at: Utc::now(),
+            keepa: Vec::new(),
         });
     }
 
@@ -306,6 +307,7 @@ fn try_extract_shopee_json(html: &str, _max_results: usize) -> Option<Vec<Produc
                             sold_count: None,
                             domestic: true,
                             fetched_at: Utc::now(),
+                            keepa: Vec::new(),
                         });
                     }
                     if !products.is_empty() {

@@ -149,6 +149,7 @@ fn parse_ml_html(html: &str, _max_results: usize) -> Result<Vec<Product>, Provid
             sold_count: None,
             domestic,
             fetched_at: Utc::now(),
+            keepa: Vec::new(),
         });
     }
 

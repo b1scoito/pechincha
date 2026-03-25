@@ -225,6 +225,7 @@ fn parse_ali_item(item: &serde_json::Value) -> Option<Product> {
         sold_count: None,
         domestic: false,
         fetched_at: Utc::now(),
+        keepa: Vec::new(),
     })
 }
 
@@ -324,6 +325,7 @@ fn scrape_rendered_html(html: &str, max_results: usize) -> Vec<Product> {
             sold_count: None,
             domestic: false,
             fetched_at: Utc::now(),
+            keepa: Vec::new(),
         });
     }
 

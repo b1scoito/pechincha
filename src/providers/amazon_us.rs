@@ -83,6 +83,7 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
     let link_selector = Selector::parse("h2 a.a-link-normal, h2 a[href*='/dp/'], a.s-underline-text").unwrap();
     let img_selector = Selector::parse("img.s-image").unwrap();
     let rating_selector = Selector::parse("span.a-icon-alt").unwrap();
+    let review_count_selector = Selector::parse("a[href*='customerReviews'] span.a-size-base, a[href*='customerReviews'] span.a-size-small").unwrap();
 
     let mut products = Vec::new();
 
@@ -178,6 +179,16 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
                 .and_then(|s| s.parse::<f32>().ok())
         });
 
+        let review_count = card.select(&review_count_selector).next().and_then(|el| {
+            let text = el.text().collect::<String>();
+            text.replace(',', "").replace('.', "").trim().parse::<u32>().ok()
+        });
+
+        // Skip impossibly cheap prices (likely parsing errors)
+        if price_usd > Decimal::ZERO && price_usd < Decimal::from(2) {
+            continue;
+        }
+
         // Price is in USD — BRL conversion will be done by the orchestrator
         // Tax: international purchase, NOT in Remessa Conforme (Amazon US is not enrolled)
         // Shipping to Brazil is usually $10-40+ or not available for all items
@@ -208,10 +219,11 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             seller: None,
             condition: ProductCondition::New,
             rating,
-            review_count: None,
+            review_count,
             sold_count: None,
             domestic: false, // International — triggers tax calculation
             fetched_at: Utc::now(),
+            keepa: Vec::new(),
         });
     }
 

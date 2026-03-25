@@ -83,6 +83,7 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
     let link_selector = Selector::parse("h2 a.a-link-normal, h2 a[href*='/dp/'], a.s-underline-text").unwrap();
     let img_selector = Selector::parse("img.s-image").unwrap();
     let rating_selector = Selector::parse("span.a-icon-alt").unwrap();
+    let review_count_selector = Selector::parse("a[href*='customerReviews'] span.a-size-base, a[href*='customerReviews'] span.a-size-small").unwrap();
 
     let mut products = Vec::new();
 
@@ -162,6 +163,11 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
                 .and_then(|s| s.replace(',', ".").parse::<f32>().ok())
         });
 
+        let review_count = card.select(&review_count_selector).next().and_then(|el| {
+            let text = el.text().collect::<String>();
+            text.replace('.', "").replace(',', "").trim().parse::<u32>().ok()
+        });
+
         let asin = card.value().attr("data-asin").unwrap_or("").to_string();
 
         // Fallback: construct URL from ASIN if link selector didn't match
@@ -198,10 +204,11 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             seller: None,
             condition: ProductCondition::New,
             rating,
-            review_count: None,
+            review_count,
             sold_count: None,
             domestic: true,
             fetched_at: Utc::now(),
+            keepa: Vec::new(),
         });
     }
 

@@ -164,6 +164,7 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
             sold_count: None,
             domestic: true,
             fetched_at: Utc::now(),
+            keepa: Vec::new(),
         });
     }
 
