@@ -208,6 +208,35 @@ impl SearchOrchestrator {
             }
         }
 
+        // For AliExpress products: fetch exact tax from product detail pages.
+        // AliExpress shows "R$X em impostos estimados" on product pages.
+        // Fetch for the top 2 relevant AliExpress products.
+        if let Some(cdp_port) = self.cdp_port {
+            let ali_products: Vec<(usize, String)> = all_products
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| {
+                    p.provider == ProviderId::AliExpress
+                        && !p.url.is_empty()
+                        && is_relevant(&p.title, &query.query)
+                })
+                .take(2)
+                .map(|(i, p)| (i, p.url.clone()))
+                .collect();
+
+            if !ali_products.is_empty() {
+                eprintln!("  Fetching AliExpress taxes...");
+                for (idx, url) in ali_products {
+                    if let Some(tax) = crate::cdp::fetch_aliexpress_tax(cdp_port, &url).await {
+                        all_products[idx].price.tax.import_tax = Some(tax);
+                        all_products[idx].price.tax.total_tax = tax;
+                        all_products[idx].price.tax.taxes_included = true; // Now we have the real tax
+                        all_products[idx].price.tax.tax_regime = TaxRegime::RemessaConformeOver50;
+                    }
+                }
+            }
+        }
+
         // Keepa price intelligence — fetch international Amazon prices.
         // Pick the best ASIN (actual product, not accessories) by selecting
         // the highest-priced product with the best title relevance match.

@@ -86,6 +86,52 @@ pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderErro
     Ok(html)
 }
 
+/// Fetch AliExpress product page and extract the exact tax amount.
+/// AliExpress shows "R$X.XXX,XX+ em impostos estimados" on product pages.
+pub async fn fetch_aliexpress_tax(cdp_port: u16, product_url: &str) -> Option<rust_decimal::Decimal> {
+    debug!("AliExpress tax: fetching {}", product_url);
+    let browser = get_browser(cdp_port).await.ok()?;
+
+    let page = match tokio::time::timeout(
+        Duration::from_secs(10),
+        browser.new_page(product_url)
+    ).await {
+        Ok(Ok(p)) => p,
+        _ => { warn!("AliExpress tax: page open timed out"); return None; }
+    };
+
+    // Wait for page to render
+    tokio::time::sleep(Duration::from_secs(3)).await;
+
+    // Extract tax amount from page text
+    let js = r#"
+        (function() {
+            var text = document.body.innerText;
+            var match = text.match(/R\$([\d.]+,\d{2})\+?\s*em\s*impostos\s*estimados/i);
+            return match ? match[1] : null;
+        })()
+    "#;
+
+    let tax_str = page.evaluate(js).await.ok()
+        .and_then(|v| v.into_value::<Option<String>>().ok())
+        .flatten();
+
+    let _ = page.close().await;
+
+    if let Some(ref s) = tax_str {
+        // Parse Brazilian number format: "2.907,76" → 2907.76
+        let normalized = s.replace('.', "").replace(',', ".");
+        if let Ok(tax) = normalized.parse::<f64>() {
+            let decimal = rust_decimal::Decimal::try_from(tax).ok()?;
+            info!(tax = %decimal, url = %product_url, "AliExpress tax extracted");
+            return Some(decimal);
+        }
+    }
+
+    debug!("AliExpress tax: not found on page");
+    None
+}
+
 /// Amazon US detail page data: price, shipping, MSRP, and seller.
 pub struct AmazonUsDetails {
     pub product_price: Option<rust_decimal::Decimal>,
