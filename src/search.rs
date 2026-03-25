@@ -424,6 +424,17 @@ impl SearchOrchestrator {
         // Relevance filter: keep only products whose title matches the core search terms.
         all_products.retain(|p| is_relevant(&p.title, &query.query));
 
+        // Bundle filter: if the user didn't search for a bundle, remove bundle results.
+        // Bundles match relevance (contain all query tokens) but aren't what the user wants.
+        let query_lower = query.query.to_lowercase();
+        let query_wants_bundle = query_lower.contains("bundle") || query_lower.contains("combo") || query_lower.contains("kit");
+        if !query_wants_bundle {
+            all_products.retain(|p| {
+                let t = p.title.to_lowercase();
+                !t.contains("bundle") && !t.contains(" combo ") && !t.contains("soundbar")
+            });
+        }
+
         // MSRP-based accessory filter: if we have a reference MSRP from Keepa,
         // products priced below 10% of it are almost certainly accessories.
         // E.g., MSRP $600 → filter out R$60 filters and R$130 accessories.
