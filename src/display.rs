@@ -73,16 +73,14 @@ pub fn print_results(results: &SearchResults, query: &str) {
         print_msrp_reference(msrp, exchange_rate);
     }
 
-    // Links
+    // Links — full URLs for clicking
     println!();
-    println!("  {}", "Links".dimmed());
     for (i, product) in results.products.iter().enumerate() {
         if !product.url.is_empty() {
-            let short_url = shorten_url(&product.url);
             println!(
                 "  {} {}",
                 format!("{:>2}", i + 1).dimmed(),
-                short_url.dimmed()
+                product.url
             );
         }
     }
@@ -405,20 +403,6 @@ fn truncate(s: &str, max: usize) -> String {
         let truncated: String = s.chars().take(max.saturating_sub(1)).collect();
         format!("{truncated}…")
     }
-}
-
-fn shorten_url(url: &str) -> String {
-    // Strip protocol and tracking params, show domain + key path
-    let stripped = url
-        .trim_start_matches("https://")
-        .trim_start_matches("http://")
-        .trim_start_matches("www.");
-
-    // Cut at first '?' or '#' to remove tracking
-    let clean = stripped.split('?').next().unwrap_or(stripped);
-    let clean = clean.split('#').next().unwrap_or(clean);
-
-    truncate(clean, 65)
 }
 
 fn dim_line(width: usize) -> String {

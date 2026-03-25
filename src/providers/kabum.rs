@@ -67,9 +67,10 @@ impl Provider for Kabum {
 
 fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
-    let start = html
-        .find(marker)
-        .ok_or_else(|| ProviderError::Scraping("__NEXT_DATA__ not found".into()))?;
+    let start = match html.find(marker) {
+        Some(s) => s,
+        None => return Ok(Vec::new()), // Page structure changed or no results
+    };
     let json_start = start + marker.len();
     let json_end = html[json_start..]
         .find("</script>")
@@ -79,10 +80,13 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
     let data: serde_json::Value = serde_json::from_str(json_str)
         .map_err(|e| ProviderError::Parse(format!("__NEXT_DATA__ JSON parse error: {e}")))?;
 
-    let items = data
+    let items = match data
         .pointer("/props/pageProps/data/catalogServer/data")
         .and_then(|v| v.as_array())
-        .ok_or_else(|| ProviderError::Scraping("Kabum catalog data not found in __NEXT_DATA__".into()))?;
+    {
+        Some(items) => items,
+        None => return Ok(Vec::new()), // No results for this search
+    };
 
     let mut products = Vec::new();
 
