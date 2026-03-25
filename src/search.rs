@@ -508,6 +508,15 @@ impl SearchOrchestrator {
             SortOrder::Relevance => {}
         }
 
+        // Deduplicate: same product from same platform listed multiple times.
+        // After sorting by price, keep the cheapest listing for each unique product.
+        let before_dedup = all_products.len();
+        deduplicate_products(&mut all_products);
+        let deduped = before_dedup - all_products.len();
+        if deduped > 0 {
+            debug!(removed = deduped, "Deduplicated products");
+        }
+
         // Apply per-provider result limit AFTER filtering and sorting
         // This ensures the best N results per provider survive, not just the first N parsed
         if query.max_results < 50 {
@@ -622,6 +631,55 @@ fn title_match_score(title: &str, query: &str) -> u32 {
     }
 
     score
+}
+
+/// Deduplicate products: remove near-identical listings from the same platform.
+/// Products are considered duplicates when:
+/// 1. Same platform + same platform_id (ASIN) — exact duplicate
+/// 2. Same platform + normalized title matches — same product, different sellers
+///
+/// Already sorted by price, so first seen = cheapest = the one we keep.
+fn deduplicate_products(products: &mut Vec<Product>) {
+    let mut seen = std::collections::HashSet::new();
+
+    products.retain(|p| {
+        // Key 1: platform + platform_id (for Amazon ASINs)
+        if !p.platform_id.is_empty() {
+            let key = format!("{}:{}", p.provider, p.platform_id);
+            if !seen.insert(key) {
+                return false; // Duplicate ASIN on same platform
+            }
+        }
+
+        // Key 2: platform + normalized title (for ML, OLX, etc.)
+        let norm_title = normalize_for_dedup(&p.title);
+        if !norm_title.is_empty() {
+            let key = format!("{}:{}", p.provider, norm_title);
+            if !seen.insert(key) {
+                return false; // Duplicate title on same platform
+            }
+        }
+
+        true
+    });
+}
+
+/// Normalize a title for deduplication: lowercase, remove common suffixes,
+/// strip punctuation, collapse whitespace.
+fn normalize_for_dedup(title: &str) -> String {
+    title.to_lowercase()
+        .replace([':', '-', '(', ')', ',', '.', '!', '/', '|'], " ")
+        // Remove common seller-specific suffixes
+        .replace("bivolt", "")
+        .replace("110v", "")
+        .replace("220v", "")
+        .replace("preto", "")
+        .replace("black", "")
+        .replace("branco", "")
+        .replace("white", "")
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Check if a product title indicates it's an accessory, not the main product.
