@@ -60,6 +60,59 @@ pub fn search_url(provider: ProviderId, query: &str) -> String {
     }
 }
 
+/// Fetch Amazon BR product detail page and extract the main price via JS evaluation.
+pub async fn fetch_amazon_br_price(cdp_port: u16, product_url: &str) -> Option<rust_decimal::Decimal> {
+    debug!("Amazon BR price: fetching {}", product_url);
+    let browser = get_browser(cdp_port).await.ok()?;
+
+    let page = match tokio::time::timeout(
+        Duration::from_secs(10),
+        browser.new_page(product_url)
+    ).await {
+        Ok(Ok(p)) => p,
+        _ => { warn!("Amazon BR detail page open timed out"); return None; }
+    };
+
+    tokio::time::sleep(Duration::from_secs(5)).await;
+
+    // Extract the main product price using JS — target the primary price display
+    let js = r#"
+        (function() {
+            // Try the main price display (corePriceDisplay)
+            var el = document.querySelector('#corePriceDisplay_desktop_feature_div .a-price .a-offscreen');
+            if (!el) el = document.querySelector('#corePrice_feature_div .a-price .a-offscreen');
+            if (!el) el = document.querySelector('.a-price[data-a-size="xl"] .a-offscreen');
+            if (!el) el = document.querySelector('#price_inside_buybox');
+            if (!el) el = document.querySelector('#priceblock_ourprice');
+            if (!el) el = document.querySelector('#newBuyBoxPrice .a-offscreen');
+            if (el) {
+                var text = el.textContent.trim();
+                // Extract number from "R$ 11.499,90" or "R$11.499,90"
+                var match = text.match(/R\$\s*([\d.]+),(\d{2})/);
+                if (match) return match[1].replace(/\./g, '') + '.' + match[2];
+            }
+            return null;
+        })()
+    "#;
+
+    let price_str = page.evaluate(js).await.ok()
+        .and_then(|v| v.into_value::<Option<String>>().ok())
+        .flatten();
+
+    let _ = page.close().await;
+
+    if let Some(ref s) = price_str {
+        if let Ok(price) = s.parse::<f64>() {
+            let decimal = rust_decimal::Decimal::try_from(price).ok()?;
+            info!(price = %decimal, url = %product_url, "Amazon BR price extracted");
+            return Some(decimal);
+        }
+    }
+
+    debug!("Amazon BR price: not found on page");
+    None
+}
+
 /// Fetch a single page via CDP — opens a new tab, navigates, waits, extracts HTML, closes tab.
 pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderError> {
     let browser = get_browser(cdp_port)
