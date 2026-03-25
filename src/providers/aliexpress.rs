@@ -207,7 +207,7 @@ fn parse_ali_item(item: &serde_json::Value) -> Option<Product> {
             shipping_cost: None,
             tax: TaxInfo {
                 remessa_conforme: true,
-                taxes_included: true,
+                taxes_included: false,
                 import_tax: None,
                 icms: None,
                 total_tax: Decimal::ZERO,

@@ -115,17 +115,14 @@ fn print_product_row(
         })
         .unwrap_or_default();
 
-    // Savings vs MSRP
+    // Savings vs MSRP imported (consistent baseline for all products).
+    // "What would it cost to import this at MSRP?" is the universal reference.
     let savings = msrp_usd.and_then(|msrp| {
         let msrp_brl = msrp * exchange_rate;
-        let reference = if !product.domestic {
-            let tax = crate::tax::TaxCalculator::calculate(
-                Some(msrp), msrp_brl, false, false, false, exchange_rate,
-            );
-            msrp_brl + tax.total_tax
-        } else {
-            msrp_brl
-        };
+        let tax = crate::tax::TaxCalculator::calculate(
+            Some(msrp), msrp_brl, false, false, false, exchange_rate,
+        );
+        let reference = msrp_brl + tax.total_tax;
         if reference > Decimal::ZERO {
             let pct = ((product.price.total_cost - reference) * Decimal::from(100)) / reference;
             Some(pct)
