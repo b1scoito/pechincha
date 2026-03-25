@@ -286,7 +286,7 @@ fn print_msrp_reference(msrp: Decimal, exchange_rate: Decimal) {
 
     println!("  {}", "Import cost at MSRP".dimmed());
     println!(
-        "  {}  US${:.2}  {}  {:.4}",
+        "  {}  US${:.2}  {}  {}",
         "MSRP".dimmed(),
         msrp,
         "→".dimmed(),
