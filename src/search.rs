@@ -275,7 +275,17 @@ impl SearchOrchestrator {
             });
 
             // Take the single best ASIN — best title match with most reviews.
+            // Skip if the best candidate has a very low title score (likely wrong product).
+            let min_keepa_score = 50u32;
             if let Some((best_asin, score, reviews, price, domain, title)) = candidates.first() {
+                if *score < min_keepa_score {
+                    info!(
+                        asin = %best_asin,
+                        title_score = score,
+                        title = %truncate_str(title, 50),
+                        "Skipping Keepa — best candidate score too low"
+                    );
+                } else {
                 info!(
                     asin = %best_asin,
                     title_score = score,
@@ -363,6 +373,7 @@ impl SearchOrchestrator {
                         }
                     }
                 }
+            } // else (score >= min_keepa_score)
             }
         }
 
