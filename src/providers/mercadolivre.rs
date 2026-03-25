@@ -16,7 +16,7 @@ pub struct MercadoLivre {
 impl MercadoLivre {
     pub fn new() -> Self {
         Self {
-            client: crate::scraping::build_client_with_cookies(ProviderId::MercadoLivre, 15),
+            client: crate::scraping::build_impersonating_client(20),
         }
     }
 

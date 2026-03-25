@@ -61,9 +61,8 @@ impl Provider for AliExpress {
 
         debug!(cdp_port, "AliExpress: connecting to real browser via CDP");
 
-        let html = crate::browser::fetch_via_cdp(&url, cdp_port)
-            .await
-            .map_err(|e| ProviderError::Browser(e))?;
+        let html = crate::cdp::fetch_page(cdp_port, &url)
+            .await?;
 
         debug!(html_len = html.len(), "AliExpress browser response");
 

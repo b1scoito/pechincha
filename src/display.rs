@@ -1,51 +1,48 @@
 use colored::Colorize;
-use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, Cell, Color, ContentArrangement, Table};
 use rust_decimal::Decimal;
 
 use crate::keepa::KeepaInsight;
 use crate::models::{Currency, Product, SearchResults};
 use crate::providers::ProviderId;
 
-pub fn print_results(results: &SearchResults, _show_taxes: bool) {
+// ── Minimal TUI Display ─────────────────────────────────────────────────────
+
+const DIM_LINE: &str = "─";
+
+pub fn print_results(results: &SearchResults, query: &str) {
     if results.products.is_empty() {
-        println!("{}", "No results found.".yellow());
-        if !results.errors.is_empty() {
-            println!();
-            print_errors(results);
-        }
+        eprintln!("{}", "  No results found.".yellow());
+        print_errors(results);
         return;
     }
 
-    // Check if any product has Keepa data or MSRP
-    let has_keepa = results.products.iter().any(|p| !p.keepa.is_empty());
-    let has_msrp = results.products.iter().any(|p| p.price.original_price.is_some());
-
-    let mut table = Table::new();
-    table
-        .load_preset(UTF8_FULL)
-        .apply_modifier(UTF8_ROUND_CORNERS)
-        .set_content_arrangement(ContentArrangement::Dynamic);
+    let provider_count = count_unique_providers(&results.products);
 
     // Header
-    let mut headers = vec!["#", "Platform", "Product", "Price", "Ship+Tax", "Total", "★"];
-    if has_keepa {
-        headers.push("US Price");
-        headers.push("Best Int'l");
-    }
-    if has_msrp {
-        headers.push("MSRP");
-        headers.push("Savings");
-    }
-    table.set_header(headers);
+    println!();
+    println!(
+        "  {} {} {}",
+        "pechincha".bold(),
+        "·".dimmed(),
+        query.italic()
+    );
+    println!(
+        "  {}",
+        format!(
+            "{} results · {} providers · {:.1}s",
+            results.products.len(),
+            provider_count,
+            results.query_time.as_secs_f64()
+        ).dimmed()
+    );
+    println!();
 
-    // Find best and worst prices for coloring
+    // Find best price for highlighting
     let best_price = results.products.iter().map(|p| p.price.total_cost).min();
-    let worst_price = results.products.iter().map(|p| p.price.total_cost).max();
 
-    // Find reference MSRP — prefer Keepa US data, fallback to USD products
+    // Find reference MSRP from Keepa
     let reference_msrp_usd: Option<Decimal> = results.products.iter()
         .find_map(|p| {
-            // First try Keepa US domain MSRP
             p.keepa.iter()
                 .find(|k| k.domain == crate::keepa::DOMAIN_US)
                 .and_then(|k| k.msrp())
@@ -56,202 +53,175 @@ pub fn print_results(results: &SearchResults, _show_taxes: bool) {
                 .and_then(|p| p.price.original_price)
         });
 
+    // Exchange rate for MSRP comparison
+    let exchange_rate = results.products.iter()
+        .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
+        .map(|p| p.price.price_brl / p.price.listed_price)
+        .unwrap_or(Decimal::from(5));
+
+    // Results list
     for (i, product) in results.products.iter().enumerate() {
-        let total_color = price_color(product.price.total_cost, best_price, worst_price);
-
-        let platform = if !product.domestic {
-            format!("{} 🌎", format_provider(product.provider))
-        } else {
-            format_provider(product.provider)
-        };
-        let title = truncate(&product.title, 50);
-        let price = format_brl(product.price.price_brl);
-
-        // Combine shipping + tax into one column
-        let ship_tax = {
-            let ship = product.price.shipping_cost.unwrap_or(Decimal::ZERO);
-            let tax = product.price.tax.total_tax;
-            let combined = ship + tax;
-            if combined > Decimal::ZERO {
-                format_brl(combined)
-            } else if product.price.tax.taxes_included {
-                "Incl.".to_string()
-            } else {
-                "—".to_string()
-            }
-        };
-
-        let total = format_brl(product.price.total_cost);
-        let rating = product.rating
-            .map(|r| {
-                if let Some(rc) = product.review_count {
-                    format!("{:.1} ({})", r, format_count(rc))
-                } else {
-                    format!("{:.1}", r)
-                }
-            })
-            .unwrap_or_else(|| "—".to_string());
-
-        let mut row: Vec<Cell> = vec![
-            Cell::new(i + 1),
-            Cell::new(platform),
-            Cell::new(title),
-            Cell::new(price),
-            Cell::new(ship_tax),
-            Cell::new(total).fg(total_color),
-            Cell::new(rating),
-        ];
-
-        if has_keepa {
-            // US Price column — show US Buy Box or Amazon price
-            let us_price = product.keepa.iter()
-                .find(|k| k.domain == crate::keepa::DOMAIN_US)
-                .and_then(|k| k.best_new_price())
-                .map(|p| format!("US${:.2}", p))
-                .unwrap_or_else(|| "—".to_string());
-            row.push(Cell::new(us_price));
-
-            // Best International — cheapest price across all non-BR domains (converted to USD)
-            let best_intl = find_cheapest_international(&product.keepa);
-            let best_intl_display = match best_intl {
-                Some((insight, usd_price)) => {
-                    format!("US${:.2} {}", usd_price, insight.domain_tld())
-                }
-                None => "—".to_string(),
-            };
-            row.push(Cell::new(best_intl_display));
-        }
-
-        if has_msrp {
-            // MSRP column — show product's own MSRP or reference MSRP
-            let msrp_display = if let Some(msrp) = product.price.original_price {
-                // Only show as USD if it actually came from Keepa (has keepa data or is USD product)
-                if product.price.currency == Currency::USD || !product.keepa.is_empty() {
-                    format!("US${:.2}", msrp)
-                } else {
-                    format_brl(msrp)
-                }
-            } else if let Some(ref_msrp) = reference_msrp_usd {
-                format!("US${:.2}", ref_msrp).dimmed().to_string()
-            } else {
-                "—".to_string()
-            };
-            row.push(Cell::new(msrp_display));
-
-            // Savings column
-            let savings_display = if let Some(ref_msrp) = reference_msrp_usd {
-                let exchange_rate = results.products.iter()
-                    .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
-                    .map(|p| p.price.price_brl / p.price.listed_price)
-                    .unwrap_or(Decimal::from(5));
-
-                let msrp_brl = ref_msrp * exchange_rate;
-
-                let reference_total = if !product.domestic {
-                    let tax_info = crate::tax::TaxCalculator::calculate(
-                        Some(ref_msrp), msrp_brl, false, false, false, exchange_rate,
-                    );
-                    msrp_brl + tax_info.total_tax
-                } else {
-                    msrp_brl
-                };
-
-                if reference_total > Decimal::ZERO {
-                    if product.price.total_cost < reference_total {
-                        let pct = ((reference_total - product.price.total_cost) * Decimal::from(100)) / reference_total;
-                        format!("-{:.0}%", pct).green().to_string()
-                    } else {
-                        let pct = ((product.price.total_cost - reference_total) * Decimal::from(100)) / reference_total;
-                        format!("+{:.0}%", pct).red().to_string()
-                    }
-                } else {
-                    "—".to_string()
-                }
-            } else {
-                "—".to_string()
-            };
-            row.push(Cell::new(savings_display));
-        }
-
-        table.add_row(row);
+        let is_best = best_price == Some(product.price.total_cost) && i == 0;
+        print_product_row(i + 1, product, is_best, reference_msrp_usd, exchange_rate);
     }
 
-    println!("{table}");
+    // Keepa international prices
+    print_keepa_section(results);
 
-    // Keepa international price summary
-    if has_keepa {
-        print_keepa_summary(results);
-    }
-
-    // MSRP reference line with tax breakdown
+    // MSRP reference
     if let Some(msrp) = reference_msrp_usd {
-        let exchange_rate = results.products.iter()
-            .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
-            .map(|p| p.price.price_brl / p.price.listed_price)
-            .unwrap_or(Decimal::from(5));
-        let msrp_brl = msrp * exchange_rate;
-        let tax_info = crate::tax::TaxCalculator::calculate(
-            Some(msrp), msrp_brl, false, false, false, exchange_rate,
-        );
-        let msrp_total = msrp_brl + tax_info.total_tax;
-        println!(
-            "\n{} US${:.2} = {} + {} tax = {} imported",
-            "MSRP:".bold(),
-            msrp,
-            format_brl(msrp_brl),
-            format_brl(tax_info.total_tax),
-            format_brl(msrp_total).bold()
-        );
+        print_msrp_reference(msrp, exchange_rate);
     }
 
-    // Print links below
+    // Links
     println!();
+    println!("  {}", "Links".dimmed());
     for (i, product) in results.products.iter().enumerate() {
         if !product.url.is_empty() {
+            let short_url = shorten_url(&product.url);
             println!(
-                "  {} {} {}",
-                format!("[{}]", i + 1).dimmed(),
-                format_provider(product.provider).dimmed(),
-                product.url
+                "  {} {}",
+                format!("{:>2}", i + 1).dimmed(),
+                short_url.dimmed()
             );
         }
     }
 
-    // Summary
-    println!(
-        "\n{} results from {} providers in {:.1}s",
-        results.products.len().to_string().bold(),
-        count_unique_providers(&results.products).to_string().bold(),
-        results.query_time.as_secs_f64()
-    );
+    // Errors
+    print_errors(results);
 
-    if let Some(best) = results.products.first() {
+    println!();
+}
+
+fn print_product_row(
+    rank: usize,
+    product: &Product,
+    is_best: bool,
+    msrp_usd: Option<Decimal>,
+    exchange_rate: Decimal,
+) {
+    let total = format_brl(product.price.total_cost);
+
+    // Platform tag
+    let platform = format_provider(product.provider);
+    let origin = if !product.domestic { "import" } else { "domestic" };
+
+    // Rating
+    let rating_str = product.rating
+        .map(|r| {
+            if let Some(rc) = product.review_count {
+                format!("{:.1} ({})", r, format_count(rc))
+            } else {
+                format!("{:.1}", r)
+            }
+        })
+        .unwrap_or_default();
+
+    // Savings vs MSRP
+    let savings = msrp_usd.and_then(|msrp| {
+        let msrp_brl = msrp * exchange_rate;
+        let reference = if !product.domestic {
+            let tax = crate::tax::TaxCalculator::calculate(
+                Some(msrp), msrp_brl, false, false, false, exchange_rate,
+            );
+            msrp_brl + tax.total_tax
+        } else {
+            msrp_brl
+        };
+        if reference > Decimal::ZERO {
+            let pct = ((product.price.total_cost - reference) * Decimal::from(100)) / reference;
+            Some(pct)
+        } else {
+            None
+        }
+    });
+
+    // First line: rank, price, title
+    let rank_str = format!("{:>2}", rank);
+    let title = truncate(&product.title, 55);
+
+    if is_best {
         println!(
-            "{} {} on {} at {}",
-            "Best deal:".green().bold(),
-            truncate(&best.title, 60),
-            best.provider,
-            format_brl(best.price.total_cost).green().bold()
+            "  {}  {}  {}",
+            rank_str.green().bold(),
+            format!("{:<13}", total).green().bold(),
+            title.bold()
+        );
+    } else {
+        println!(
+            "  {}  {}  {}",
+            rank_str.dimmed(),
+            format!("{:<13}", total).bold(),
+            title
         );
     }
 
-    if !results.errors.is_empty() {
-        println!();
-        print_errors(results);
+    // Second line: metadata (platform, origin, rating, savings)
+    let mut meta_parts: Vec<String> = vec![platform, origin.to_string()];
+
+    if !rating_str.is_empty() {
+        meta_parts.push(format!("{}★", rating_str));
     }
+
+    if let Some(pct) = savings {
+        if pct < Decimal::ZERO {
+            meta_parts.push(format!("{:.0}% vs MSRP", pct).green().to_string());
+        } else if pct > Decimal::ZERO {
+            meta_parts.push(format!("+{:.0}% vs MSRP", pct).red().to_string());
+        }
+    }
+
+    let meta = meta_parts.join(&format!(" {} ", "·".dimmed()));
+
+    // Price breakdown for imports
+    let breakdown = if !product.domestic && product.price.currency == Currency::USD {
+        let ship_tax = product.price.shipping_cost.unwrap_or(Decimal::ZERO) + product.price.tax.total_tax;
+        if ship_tax > Decimal::ZERO {
+            // Convert back to USD for display
+            let ship_tax_usd = ship_tax / exchange_rate;
+            format!(
+                "US${:.0} + US${:.0} ship+tax",
+                product.price.listed_price, ship_tax_usd
+            )
+        } else {
+            format!("US${:.0}", product.price.listed_price)
+        }
+    } else {
+        String::new()
+    };
+
+    if breakdown.is_empty() {
+        println!("  {}  {:<13}  {}", "  ", "", meta.dimmed());
+    } else {
+        println!(
+            "  {}  {:<13}  {}",
+            "  ",
+            breakdown.dimmed(),
+            meta.dimmed()
+        );
+    }
+
+    println!(); // Spacing between results
 }
 
-/// Print Keepa international price comparison for products that have it.
-fn print_keepa_summary(results: &SearchResults) {
-    // Find the first product with Keepa data
+// ── Keepa Section ───────────────────────────────────────────────────────────
+
+fn print_keepa_section(results: &SearchResults) {
     let product = match results.products.iter().find(|p| !p.keepa.is_empty()) {
         Some(p) => p,
         None => return,
     };
 
-    println!("\n{}", "International Amazon prices (via Keepa):".bold());
+    println!(
+        "  {} {}",
+        dim_line(50),
+        "".dimmed()
+    );
+    println!();
+    println!("  {}", "International Amazon Prices".bold());
+    println!("  {}", format!("ASIN {} via Keepa", product.platform_id).dimmed());
+    println!();
 
-    // Sort by best new price in USD (normalized for comparison)
     let mut insights: Vec<&KeepaInsight> = product.keepa.iter()
         .filter(|k| k.best_new_price_usd().is_some())
         .collect();
@@ -260,45 +230,77 @@ fn print_keepa_summary(results: &SearchResults) {
             .cmp(&b.best_new_price_usd().unwrap_or(Decimal::MAX))
     });
 
+    let cheapest_domain = insights.first().map(|k| k.domain);
+
     for k in &insights {
         let local_price = k.best_new_price().unwrap();
         let usd_price = k.best_new_price_usd().unwrap();
         let sym = k.currency_symbol();
+        let is_cheapest = cheapest_domain == Some(k.domain);
 
-        let warehouse = k.warehouse_usd()
-            .map(|w| format!(" | Warehouse: US${:.2}", w))
-            .unwrap_or_default();
-        let refurb = k.refurbished_usd()
-            .map(|r| format!(" | Refurb: US${:.2}", r))
-            .unwrap_or_default();
-
-        let domain_str = format!("Amazon{:<8}", k.domain_tld());
-        let is_cheapest = insights.first().map(|f| f.domain) == Some(k.domain);
-
-        // Show local price + USD equivalent for non-USD domains
+        // Price display
         let price_str = if k.domain == crate::keepa::DOMAIN_US {
             format!("US${:.2}", local_price)
         } else {
-            format!("{}{:.2} (~US${:.2})", sym, local_price, usd_price)
+            format!("{}{:.0} (~US${:.0})", sym, local_price, usd_price)
         };
 
-        let line = format!("  {} {}{}{}", domain_str, price_str, warehouse, refurb);
+        // Extras
+        let mut extras = Vec::new();
+        if let Some(w) = k.warehouse_usd() {
+            extras.push(format!("Warehouse US${:.0}", w));
+        }
+        if let Some(r) = k.refurbished_usd() {
+            extras.push(format!("Refurb US${:.0}", r));
+        }
+        let extras_str = if extras.is_empty() {
+            String::new()
+        } else {
+            format!("  {}", extras.join(" · ").dimmed())
+        };
+
+        let domain_label = format!("Amazon{}", k.domain_tld());
 
         if is_cheapest {
-            println!("{}", line.green());
+            println!(
+                "  {}  {:<20} {}{}",
+                "→".green(),
+                domain_label,
+                price_str.green().bold(),
+                extras_str
+            );
         } else {
-            println!("{}", line);
+            println!(
+                "    {:<20} {}{}",
+                domain_label.dimmed(),
+                price_str,
+                extras_str
+            );
         }
     }
+
+    println!();
 }
 
-/// Find the cheapest international (non-BR) price from Keepa insights, in USD.
-fn find_cheapest_international(keepa: &[KeepaInsight]) -> Option<(&KeepaInsight, Decimal)> {
-    keepa.iter()
-        .filter(|k| k.domain != crate::keepa::DOMAIN_BR)
-        .filter_map(|k| k.best_new_price_usd().map(|p| (k, p)))
-        .min_by_key(|(_, p)| *p)
+fn print_msrp_reference(msrp: Decimal, exchange_rate: Decimal) {
+    let msrp_brl = msrp * exchange_rate;
+    let tax_info = crate::tax::TaxCalculator::calculate(
+        Some(msrp), msrp_brl, false, false, false, exchange_rate,
+    );
+    let msrp_total = msrp_brl + tax_info.total_tax;
+
+    println!(
+        "  {} US${:.2} = {} + {} tax = {} {}",
+        "MSRP".dimmed(),
+        msrp,
+        format_brl(msrp_brl).dimmed(),
+        format_brl(tax_info.total_tax).dimmed(),
+        format_brl(msrp_total).bold(),
+        "imported".dimmed()
+    );
 }
+
+// ── JSON & CSV Output ───────────────────────────────────────────────────────
 
 pub fn print_json(results: &SearchResults) {
     let output = serde_json::json!({
@@ -314,13 +316,45 @@ pub fn print_json(results: &SearchResults) {
     println!("{}", serde_json::to_string_pretty(&output).unwrap());
 }
 
+pub fn print_csv(results: &SearchResults) {
+    println!("rank,platform,title,price_brl,shipping_brl,tax_brl,total_brl,rating,reviews,domestic,url");
+    for (i, p) in results.products.iter().enumerate() {
+        let shipping = p.price.shipping_cost.unwrap_or(Decimal::ZERO);
+        let tax = p.price.tax.total_tax;
+        let rating = p.rating.map(|r| format!("{:.1}", r)).unwrap_or_default();
+        let reviews = p.review_count.map(|r| r.to_string()).unwrap_or_default();
+        // Escape commas in title
+        let title = p.title.replace('"', "\"\"");
+        println!(
+            "{},{}.\"{}\",{:.2},{:.2},{:.2},{:.2},{},{},{},{}",
+            i + 1,
+            p.provider,
+            title,
+            p.price.price_brl,
+            shipping,
+            tax,
+            p.price.total_cost,
+            rating,
+            reviews,
+            p.domestic,
+            p.url
+        );
+    }
+}
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
 fn print_errors(results: &SearchResults) {
+    if results.errors.is_empty() {
+        return;
+    }
+    println!();
     for (provider, error) in &results.errors {
         eprintln!(
-            "{} {} — {}",
-            "⚠".yellow(),
+            "  {} {} {}",
+            "!".yellow(),
             provider.to_string().yellow(),
-            error
+            format!("{}", error).dimmed()
         );
     }
 }
@@ -328,10 +362,10 @@ fn print_errors(results: &SearchResults) {
 fn format_provider(id: ProviderId) -> String {
     match id {
         ProviderId::MercadoLivre => "ML".to_string(),
-        ProviderId::AliExpress => "Ali".to_string(),
+        ProviderId::AliExpress => "AliExpress".to_string(),
         ProviderId::Shopee => "Shopee".to_string(),
-        ProviderId::Amazon => "Amazon".to_string(),
-        ProviderId::AmazonUS => "Amz US".to_string(),
+        ProviderId::Amazon => "Amazon BR".to_string(),
+        ProviderId::AmazonUS => "Amazon US".to_string(),
         ProviderId::Kabum => "Kabum".to_string(),
         ProviderId::MagazineLuiza => "Magalu".to_string(),
         ProviderId::Olx => "OLX".to_string(),
@@ -339,12 +373,26 @@ fn format_provider(id: ProviderId) -> String {
 }
 
 fn format_brl(value: Decimal) -> String {
-    format!("R$ {:.2}", value)
+    // Format with thousands separator
+    let whole = value.trunc().abs();
+    let frac = ((value - value.trunc()) * Decimal::from(100)).abs().trunc();
+    let whole_str = whole.to_string();
+    let mut formatted = String::new();
+    for (i, ch) in whole_str.chars().rev().enumerate() {
+        if i > 0 && i % 3 == 0 {
+            formatted.push('.');
+        }
+        formatted.push(ch);
+    }
+    let formatted: String = formatted.chars().rev().collect();
+    format!("R$ {},{:02}", formatted, frac)
 }
 
 fn format_count(count: u32) -> String {
-    if count >= 1000 {
-        format!("{}k", count / 1000)
+    if count >= 1_000_000 {
+        format!("{:.1}M", count as f64 / 1_000_000.0)
+    } else if count >= 1_000 {
+        format!("{:.1}k", count as f64 / 1_000.0)
     } else {
         count.to_string()
     }
@@ -354,31 +402,27 @@ fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         s.to_string()
     } else {
-        let truncated: String = s.chars().take(max.saturating_sub(3)).collect();
-        format!("{truncated}...")
+        let truncated: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{truncated}…")
     }
 }
 
-fn price_color(
-    price: Decimal,
-    best: Option<Decimal>,
-    worst: Option<Decimal>,
-) -> Color {
-    match (best, worst) {
-        (Some(b), Some(w)) if b != w => {
-            let range = w - b;
-            let position = price - b;
-            let ratio = position / range;
-            if ratio <= rust_decimal_macros::dec!(0.33) {
-                Color::Green
-            } else if ratio <= rust_decimal_macros::dec!(0.66) {
-                Color::Yellow
-            } else {
-                Color::Red
-            }
-        }
-        _ => Color::White,
-    }
+fn shorten_url(url: &str) -> String {
+    // Strip protocol and tracking params, show domain + key path
+    let stripped = url
+        .trim_start_matches("https://")
+        .trim_start_matches("http://")
+        .trim_start_matches("www.");
+
+    // Cut at first '?' or '#' to remove tracking
+    let clean = stripped.split('?').next().unwrap_or(stripped);
+    let clean = clean.split('#').next().unwrap_or(clean);
+
+    truncate(clean, 65)
+}
+
+fn dim_line(width: usize) -> String {
+    DIM_LINE.repeat(width).dimmed().to_string()
 }
 
 fn count_unique_providers(products: &[Product]) -> usize {

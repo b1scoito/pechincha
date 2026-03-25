@@ -1,0 +1,241 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e17]:
+    - text:    
+    - generic [ref=e18]:
+      - link [ref=e20]:
+        - /url: "#!"
+        - img [ref=e21]
+      - list [ref=e42]:
+        - listitem [ref=e43]:
+          - link " Deals" [ref=e44] [cursor=pointer]:
+            - /url: "#!deals"
+            - generic [ref=e45]: 
+            - generic [ref=e46]: Deals
+        - listitem [ref=e47]:
+          - link " Track" [ref=e48] [cursor=pointer]:
+            - /url: "#!tracking"
+            - generic [ref=e49]: 
+            - generic [ref=e50]: Track
+        - listitem [ref=e51]:
+          - link " Apps" [ref=e52] [cursor=pointer]:
+            - /url: "#!addon"
+            - generic [ref=e53]: 
+            - generic [ref=e54]: Apps
+        - listitem [ref=e55]:
+          - link " Pro" [ref=e56] [cursor=pointer]:
+            - /url: "#!data"
+            - generic [ref=e57]: 
+            - generic [ref=e58]: Pro
+        - listitem [ref=e59]:
+          - link " Resources" [ref=e60] [cursor=pointer]:
+            - /url: "#!discuss"
+            - generic [ref=e61]: 
+            - generic [ref=e62]: Resources
+        - listitem [ref=e63]:
+          - link " Search" [ref=e64] [cursor=pointer]:
+            - /url: javascript:void(0)
+            - generic [ref=e65]: 
+            - generic [ref=e66]: Search
+      - generic [ref=e69]:
+        - generic [ref=e70] [cursor=pointer]:
+          - generic [ref=e71]:
+            - generic [ref=e72]: Language
+            - img [ref=e73]
+          - generic [ref=e74]:
+            - generic [ref=e75]: Amazon
+            - generic [ref=e76]: .com
+        - text: 
+      - generic [ref=e79]: Log In / Register  
+    - generic [ref=e80]: 
+    - table [ref=e84]:
+      - rowgroup [ref=e85]:
+        - row [ref=e86]:
+          - cell [ref=e87]
+          - cell [ref=e96]:
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - generic [ref=e99]:
+                  - text: Sony WH-1000XM5 Premium Noise Canceling Headphones, Auto NC Optimizer, 30-Hour Battery, Alexa Voice Control, Black
+                  - generic [ref=e100]:
+                    - generic [ref=e101]: 
+                    - generic [ref=e102]: 
+                    - generic [ref=e103]: 
+                    - generic [ref=e104]: 
+                    - generic [ref=e105]: 
+                    - text: 4.2 (19,122 reviews)
+                - generic [ref=e106]: by Sony | Black
+                - text: "Buy Box:"
+                - generic [ref=e108]: $ 298.00
+                - text: "Amazon:"
+                - generic [ref=e110]: $ 298.00
+                - text: "New:"
+                - generic [ref=e112]: $ 298.00
+                - text: "Used:"
+                - generic [ref=e114]: $ 197.43
+                - text: "(last update: 24 minutes ago, last price change: 4 hours ago)"
+              - generic [ref=e115]:
+                - list [ref=e117]:
+                  - listitem [ref=e118]: Amazon Price History
+                  - listitem [ref=e119] [cursor=pointer]: Track product
+                  - listitem [ref=e120] [cursor=pointer]: Data
+                  - listitem [ref=e121] [cursor=pointer]: Variations
+                  - listitem [ref=e122] [cursor=pointer]:
+                    - link [ref=e123]:
+                      - /url: https://dyn-2.keepa.com/r/?type=amazon&smile=0&domain=1&asin=B09XS7JWHH&source=website&path=product
+                      - img [ref=e124]
+                    - link "ebay" [ref=e125]:
+                      - /url: https://www.ebay.com/sch/?kw=4548736132627
+                  - listitem [ref=e126] [cursor=pointer]:
+                    - link "→ Find related Deals" [ref=e127]:
+                      - /url: https://keepa.com/#!deals/%7B%22page%22%3A0%2C%22domainId%22%3A%221%22%2C%22excludeCategories%22%3A%5B%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%5D%2C%22includeCategories%22%3A%5B%5B%5D%2C%5B12097479011%2C23908366011%2C119186713011%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%2C%5B%5D%5D%2C%22priceTypes%22%3A%5B0%5D%2C%22deltaRange%22%3A%5B0%2C10000%5D%2C%22deltaPercentRange%22%3A%5B20%2C80%5D%2C%22salesRankRange%22%3A%5B-1%2C-1%5D%2C%22currentRange%22%3A%5B500%2C40000%5D%2C%22minRating%22%3A-1%2C%22isLowest%22%3Afalse%2C%22isLowest90%22%3Afalse%2C%22isLowestOffer%22%3Afalse%2C%22isOutOfStock%22%3Afalse%2C%22titleSearch%22%3A%22%22%2C%22isRangeEnabled%22%3Atrue%2C%22isFilterEnabled%22%3Afalse%2C%22filterErotic%22%3Atrue%2C%22singleVariation%22%3Atrue%2C%22hasReviews%22%3Afalse%2C%22isPrimeExclusive%22%3Afalse%2C%22mustHaveAmazonOffer%22%3Afalse%2C%22mustNotHaveAmazonOffer%22%3Afalse%2C%22sortType%22%3A4%2C%22dateRange%22%3A4%2C%22warehouseConditions%22%3A%5B1%2C2%2C3%2C4%2C5%5D%2C%22settings%22%3A%7B%22viewTyp%22%3A0%7D%7D
+                - generic [ref=e128]:
+                  - generic [ref=e129]:
+                    - generic [ref=e130]:
+                      - table [ref=e133] [cursor=pointer]:
+                        - rowgroup [ref=e134]:
+                          - row "Sales Rank  " [ref=e135]:
+                            - cell [ref=e136]
+                            - cell "Sales Rank  " [ref=e139]:
+                              - text: Sales Rank
+                              - generic [ref=e141]: 
+                              - generic [ref=e142]: 
+                          - row [ref=e143]:
+                            - cell [ref=e144]
+                            - cell
+                          - row "Buy Box" [ref=e145]:
+                            - cell [ref=e146]
+                            - cell "Buy Box" [ref=e149]
+                          - row "Amazon" [ref=e150]:
+                            - cell [ref=e151]
+                            - cell "Amazon" [ref=e154]
+                          - row "New" [ref=e155]:
+                            - cell [ref=e156]
+                            - cell "New" [ref=e159]
+                          - row "New, 3rd Party FBA" [ref=e160]:
+                            - cell [ref=e161]
+                            - cell "New, 3rd Party FBA" [ref=e164]
+                          - row "New, 3rd Party FBM" [ref=e165]:
+                            - cell [ref=e166]
+                            - cell "New, 3rd Party FBM" [ref=e169]
+                          - row "New, Prime exclusive" [ref=e170]:
+                            - cell [ref=e171]
+                            - cell "New, Prime exclusive" [ref=e174]
+                          - row "Lightning Deals" [ref=e175]:
+                            - cell [ref=e176]
+                            - cell "Lightning Deals" [ref=e179]
+                          - row [ref=e180]:
+                            - cell [ref=e181]
+                            - cell
+                          - row "Buy Box Used " [ref=e182]:
+                            - cell [ref=e183]
+                            - cell "Buy Box Used " [ref=e186]:
+                              - text: Buy Box Used
+                              - generic [ref=e187]: 
+                          - row "Used" [ref=e188]:
+                            - cell [ref=e189]
+                            - cell "Used" [ref=e192]
+                          - row "Used, like new" [ref=e193]:
+                            - cell [ref=e194]
+                            - cell "Used, like new" [ref=e197]
+                          - row "Used, very good" [ref=e198]:
+                            - cell [ref=e199]
+                            - cell "Used, very good" [ref=e202]
+                          - row "Used, good" [ref=e203]:
+                            - cell [ref=e204]
+                            - cell "Used, good" [ref=e207]
+                          - row "Used, acceptable" [ref=e208]:
+                            - cell [ref=e209]
+                            - cell "Used, acceptable" [ref=e212]
+                          - row "Warehouse Deals" [ref=e213]:
+                            - cell [ref=e214]
+                            - cell "Warehouse Deals" [ref=e217]
+                          - row [ref=e218]:
+                            - cell [ref=e219]
+                            - cell
+                          - row "Refurbished" [ref=e220]:
+                            - cell [ref=e221]
+                            - cell "Refurbished" [ref=e224]
+                          - row "List Price" [ref=e225]:
+                            - cell [ref=e226]
+                            - cell "List Price" [ref=e229]
+                          - row "Trade-In" [ref=e230]:
+                            - cell [ref=e231]
+                            - cell "Trade-In" [ref=e234]
+                          - row [ref=e235]:
+                            - cell [ref=e236]
+                          - row " Close-up view " [ref=e237]:
+                            - cell "" [ref=e238]:
+                              - generic [ref=e239]: 
+                            - cell "Close-up view " [ref=e240]:
+                              - generic [ref=e242]:
+                                - text: Close-up view
+                                - generic [ref=e243]: 
+                          - row " Range Day Week Month 3 Months Year All (1412 days)" [ref=e244]:
+                            - cell "" [ref=e245]:
+                              - generic [ref=e246]: 
+                            - cell "Range Day Week Month 3 Months Year All (1412 days)" [ref=e247]:
+                              - table [ref=e248]:
+                                - rowgroup [ref=e249]:
+                                  - row "Range Day" [ref=e250]:
+                                    - cell "Range" [ref=e251]
+                                    - cell "Day" [ref=e252]
+                                  - row "Week" [ref=e253]:
+                                    - cell [ref=e254]
+                                    - cell "Week" [ref=e255]
+                                  - row "Month" [ref=e256]:
+                                    - cell [ref=e257]
+                                    - cell "Month" [ref=e258]
+                                  - row "3 Months" [ref=e259]:
+                                    - cell [ref=e260]
+                                    - cell "3 Months" [ref=e261]
+                                  - row "Year" [ref=e262]:
+                                    - cell [ref=e263]
+                                    - cell "Year" [ref=e264]
+                                  - row "All (1412 days)" [ref=e265]:
+                                    - cell [ref=e266]
+                                    - cell "All (1412 days)" [ref=e267]
+                      - generic:
+                        - generic:
+                          - generic [ref=e268]: Jan 1
+                          - generic [ref=e269]: Jan 8
+                          - generic [ref=e270]: Jan 16
+                          - generic [ref=e271]: Jan 24
+                          - generic [ref=e272]: Feb 1
+                          - generic [ref=e273]: Feb 8
+                          - generic [ref=e274]: Feb 15
+                          - generic [ref=e275]: Feb 22
+                          - generic [ref=e276]: Mar 1
+                          - generic [ref=e277]: Mar 8
+                          - generic [ref=e278]: Mar 16
+                          - generic [ref=e279]: Mar 24
+                        - generic:
+                          - generic [ref=e280]: $ 100
+                          - generic [ref=e281]: $ 150
+                          - generic [ref=e282]: $ 200
+                          - generic [ref=e283]: $ 250
+                          - generic [ref=e284]: $ 300
+                          - generic [ref=e285]: $ 350
+                          - generic [ref=e286]: $ 400
+                          - generic [ref=e287]: $ 450
+                    - generic [ref=e288]:
+                      - text: Select area to zoom in. Double-click to reset.
+                      - text: Toggle shown data by clicking on the legend.
+                    - generic:
+                      - generic:    
+                      - generic:      
+                    - generic [ref=e290]:
+                      - generic [ref=e291] [cursor=pointer]:
+                        - generic [ref=e292]: 
+                        - text: Statistic
+                      - generic [ref=e293] [cursor=pointer]:
+                        - generic [ref=e294]: 
+                        - text: Compare international Amazon prices
+                      - generic [ref=e295] [cursor=pointer]:
+                        - generic [ref=e296]: 
+                        - text: Share Graph
+                      - generic [ref=e297] [cursor=pointer]:
+                        - generic [ref=e298]: 
+                        - text: Graph Settings
+                  - text:                                                                                                             
+  - progressbar [ref=e12]
+  - text: 

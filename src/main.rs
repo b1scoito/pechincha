@@ -31,6 +31,10 @@ struct Cli {
     #[arg(short, long)]
     json: bool,
 
+    /// Output as CSV
+    #[arg(long)]
+    csv: bool,
+
     /// Minimum price filter (BRL)
     #[arg(long)]
     min_price: Option<f64>,
@@ -69,51 +73,6 @@ enum Commands {
     },
     /// List available providers and their status
     Providers,
-    /// Log in to a provider (saves session cookies from your browser or curl)
-    Login {
-        /// Provider to log in to (ml, ali, shopee, amazon, amazon_us, kabum, magalu, olx)
-        provider: String,
-
-        /// Extract cookies from your browser (chrome, brave, firefox, safari, edge, chromium)
-        #[arg(long, default_value = "chrome")]
-        from_browser: String,
-
-        /// Import cookies from a curl command string instead (from DevTools "Copy as cURL")
-        #[arg(long)]
-        import_curl: Option<String>,
-
-        /// Import cookies from a file containing a curl command
-        #[arg(long)]
-        import_curl_file: Option<String>,
-
-        /// Open a browser window for manual login instead of extracting
-        #[arg(long)]
-        interactive: bool,
-    },
-    /// Log out from a provider (deletes saved cookies)
-    Logout {
-        /// Provider to log out from, or "all" to clear all sessions
-        provider: String,
-    },
-    /// Manage the browser daemon (for Shopee/AliExpress via CDP)
-    Daemon {
-        #[command(subcommand)]
-        action: DaemonAction,
-    },
-}
-
-#[derive(Subcommand)]
-enum DaemonAction {
-    /// Start browser daemon (first time: visible for login; after: use --headless)
-    Start {
-        /// Run headless (no visible window). Use after logging in with visible mode first.
-        #[arg(long)]
-        headless: bool,
-    },
-    /// Stop the browser daemon
-    Stop,
-    /// Show daemon status
-    Status,
 }
 
 #[derive(Subcommand)]
@@ -142,12 +101,11 @@ async fn main() -> anyhow::Result<()> {
     let mut config = PechinchaConfig::load(cli.config.as_deref().map(std::path::Path::new))
         .map_err(|e| anyhow::anyhow!(e))?;
 
-    // CLI --cdp-port overrides config; auto-detect daemon if running
+    // CLI --cdp-port overrides config; auto-detect if port 9222 is listening
     if let Some(port) = cli.cdp_port {
         config.general.cdp_port = Some(port);
     } else if config.general.cdp_port.is_none() {
-        // Auto-detect: our daemon, OR user's personal browser with CDP
-        if pechincha::daemon::is_running() || pechincha::daemon::is_cdp_available(9222) {
+        if std::net::TcpStream::connect("127.0.0.1:9222").is_ok() {
             config.general.cdp_port = Some(9222);
         }
     }
@@ -168,104 +126,15 @@ async fn main() -> anyhow::Result<()> {
                 println!("Config written to {}", path.display());
             }
         },
-        Some(Commands::Login { provider, from_browser, import_curl, import_curl_file, interactive }) => {
-            let id: ProviderId = provider
-                .parse()
-                .map_err(|e: String| anyhow::anyhow!(e))?;
-
-            let cookies = if interactive {
-                // Open browser for manual login
-                pechincha::browser::login_interactive(id)
-                    .map_err(|e| anyhow::anyhow!(e))?
-            } else if let Some(ref curl) = import_curl {
-                let c = pechincha::cookies::parse_curl_cookies(curl);
-                if c.is_empty() {
-                    anyhow::bail!("No cookies found in curl command.");
-                }
-                pechincha::cookies::save_cookies(id, &c).map_err(|e| anyhow::anyhow!(e))?;
-                c
-            } else if let Some(ref path) = import_curl_file {
-                let curl = std::fs::read_to_string(path)?;
-                let c = pechincha::cookies::parse_curl_cookies(&curl);
-                if c.is_empty() {
-                    anyhow::bail!("No cookies found in curl file.");
-                }
-                pechincha::cookies::save_cookies(id, &c).map_err(|e| anyhow::anyhow!(e))?;
-                c
-            } else {
-                // Default: extract cookies from browser (like yt-dlp --cookies-from-browser)
-                let domain = pechincha::scraping::provider_domain(id);
-                println!("Extracting {} cookies from {}...", id, from_browser);
-                let cookies = pechincha::cookies::extract_browser_cookies(id, &from_browser, domain)
-                    .map_err(|e| anyhow::anyhow!(e))?;
-                if cookies.is_empty() {
-                    anyhow::bail!(
-                        "No cookies found for {} in {}. Make sure you're logged in to {} in your {} browser.",
-                        id, from_browser, domain, from_browser
-                    );
-                }
-                pechincha::cookies::save_cookies(id, &cookies).map_err(|e| anyhow::anyhow!(e))?;
-                cookies
-            };
-
-            println!("Saved {} cookies for {}.", cookies.len(), id);
-
-            // Show session cookies
-            let session: Vec<&str> = cookies.iter()
-                .filter(|c| {
-                    let n = c.name.to_lowercase();
-                    n.contains("session") || n.contains("token") || n.contains("auth")
-                        || n.contains("sid") || n.contains("spc_") || n.contains("at-main")
-                })
-                .map(|c| c.name.as_str())
-                .collect();
-            if !session.is_empty() {
-                println!("Session cookies: {}", session.join(", "));
-            }
-        }
-        Some(Commands::Logout { provider }) => {
-            if provider == "all" {
-                for id in ProviderId::all() {
-                    pechincha::cookies::delete_cookies(*id)
-                        .map_err(|e| anyhow::anyhow!(e))?;
-                }
-                println!("Cleared all saved sessions.");
-            } else {
-                let id: ProviderId = provider
-                    .parse()
-                    .map_err(|e: String| anyhow::anyhow!(e))?;
-                pechincha::cookies::delete_cookies(id)
-                    .map_err(|e| anyhow::anyhow!(e))?;
-                println!("Logged out from {}.", id);
-            }
-        }
-        Some(Commands::Daemon { action }) => match action {
-            DaemonAction::Start { headless } => {
-                pechincha::daemon::start(headless)
-                    .map_err(|e| anyhow::anyhow!(e))?;
-            }
-            DaemonAction::Stop => {
-                pechincha::daemon::stop()
-                    .map_err(|e| anyhow::anyhow!(e))?;
-            }
-            DaemonAction::Status => {
-                println!("Daemon: {}", pechincha::daemon::status());
-            }
-        }
         Some(Commands::Providers) => {
             println!("Available providers:");
             for id in ProviderId::all() {
-                let logged_in = if pechincha::cookies::has_cookies(*id) {
-                    " (logged in)"
-                } else {
-                    ""
-                };
                 let status = if provider_enabled(&config, *id) {
                     "enabled"
                 } else {
                     "disabled"
                 };
-                println!("  {:<16} {}{}", id.to_string(), status, logged_in);
+                println!("  {:<16} {}", id.to_string(), status);
             }
         }
         None => {
@@ -301,10 +170,12 @@ async fn main() -> anyhow::Result<()> {
             let orchestrator = SearchOrchestrator::from_config(&config);
             let results = orchestrator.search(&query).await;
 
-            if cli.json {
+            if cli.csv {
+                display::print_csv(&results);
+            } else if cli.json {
                 display::print_json(&results);
             } else {
-                display::print_results(&results, cli.taxes);
+                display::print_results(&results, &query.query);
             }
         }
     }

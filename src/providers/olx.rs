@@ -15,7 +15,7 @@ pub struct Olx {
 impl Olx {
     pub fn new() -> Self {
         Self {
-            client: crate::scraping::build_client_with_cookies(ProviderId::Olx, 15),
+            client: crate::scraping::build_impersonating_client(20),
         }
     }
 }

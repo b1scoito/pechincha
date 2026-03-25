@@ -22,7 +22,6 @@ async-trait = "0.1"
 wreq = { version = "6.0.0-rc.28", features = ["json", "cookies", "gzip", "brotli", "zstd"] }
 wreq-util = "3.0.0-rc.10"
 scraper = "0.22"
-headless_chrome = "1"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -30,12 +29,7 @@ serde_json = "1"
 
 # CLI
 clap = { version = "4", features = ["derive"] }
-comfy-table = "7"
 colored = "3"
-
-# Resilience
-governor = "0.8"
-backoff = { version = "0.4", features = ["tokio"] }
 
 # Types
 rust_decimal = { version = "1", features = ["serde-with-str"] }
@@ -55,11 +49,9 @@ rand = "0.8"
 url = "2"
 urlencoding = "2.1.3"
 rust_decimal_macros = "1.40.0"
-rookie = "0.5.6"
 chaser-oxide = "0.1.2"
 futures = "0.3.32"
 regex-lite = "0.1.9"
-libc = "0.2.183"
 tokio-tungstenite = { version = "0.29.0", features = ["native-tls"] }
 base64 = "0.22.1"
 zstd = "0.13.3"

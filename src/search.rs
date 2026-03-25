@@ -96,7 +96,7 @@ impl SearchOrchestrator {
         }
 
         let mode = if self.cdp_port.is_some() { "CDP" } else { "wreq" };
-        eprintln!("Searching {} providers...", active.len());
+        eprintln!("  Searching {} providers...", active.len());
         info!(
             providers = active.len(),
             query = %query.query,
@@ -134,7 +134,7 @@ impl SearchOrchestrator {
                 .collect();
 
             if !amz_us_products.is_empty() {
-                eprintln!("Fetching Amazon US shipping costs ({} products)...", amz_us_products.len());
+                eprintln!("  Fetching Amazon US details...");
                 info!(
                     count = amz_us_products.len(),
                     "Fetching Amazon US prices + shipping from detail pages"
@@ -256,7 +256,7 @@ impl SearchOrchestrator {
                     title = %truncate_str(title, 50),
                     "Keepa target ASIN"
                 );
-                eprintln!("Fetching Keepa prices for {}...", best_asin);
+                eprintln!("  Fetching Keepa prices...");
 
                 let insights = tokio::time::timeout(
                     std::time::Duration::from_secs(35), // Must be > inner 25s deadline

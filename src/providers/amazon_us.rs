@@ -16,7 +16,7 @@ pub struct AmazonUS {
 impl AmazonUS {
     pub fn new() -> Self {
         Self {
-            client: crate::scraping::build_client_with_cookies(ProviderId::AmazonUS, 20),
+            client: crate::scraping::build_impersonating_client(20),
         }
     }
 }
