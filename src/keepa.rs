@@ -302,22 +302,47 @@ async fn fetch_keepa_ws(
         }
 
         let page = browser.new_page(&url).await.ok()?;
-        // Wait for navigation to start and URL to update in targets
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
-        // Get the tab's WebSocket URL — find the tab with our ASIN in URL
-        let targets: Vec<serde_json::Value> = client
-            .get(format!("http://127.0.0.1:{cdp_port}/json/list"))
-            .send().await.ok()?
-            .json().await.ok()?;
+        // Find the Keepa tab's WebSocket URL — retry a few times since URL updates async
+        let mut page_ws = None;
+        for attempt in 0..5 {
+            tokio::time::sleep(std::time::Duration::from_millis(if attempt == 0 { 500 } else { 1000 })).await;
 
-        let page_ws = targets.iter()
-            .find(|t| {
-                let u = t["url"].as_str().unwrap_or("");
-                u.contains("keepa.com") && u.contains(asin) && t["type"].as_str() == Some("page")
-            })
-            .and_then(|t| t["webSocketDebuggerUrl"].as_str())
-            .map(|s| s.to_string())?;
+            let targets: Vec<serde_json::Value> = client
+                .get(format!("http://127.0.0.1:{cdp_port}/json/list"))
+                .send().await.ok()?
+                .json().await.ok()?;
+
+            page_ws = targets.iter()
+                .find(|t| {
+                    let u = t["url"].as_str().unwrap_or("");
+                    u.contains("keepa.com") && u.contains(asin) && t["type"].as_str() == Some("page")
+                })
+                .and_then(|t| t["webSocketDebuggerUrl"].as_str())
+                .map(|s| s.to_string());
+
+            if page_ws.is_some() {
+                debug!(attempt = attempt, "Found Keepa tab");
+                break;
+            }
+
+            if attempt == 4 {
+                // Last attempt: try matching just keepa.com without ASIN
+                page_ws = targets.iter()
+                    .find(|t| {
+                        let u = t["url"].as_str().unwrap_or("");
+                        u.contains("keepa.com") && t["type"].as_str() == Some("page")
+                    })
+                    .and_then(|t| t["webSocketDebuggerUrl"].as_str())
+                    .map(|s| s.to_string());
+
+                if page_ws.is_some() {
+                    debug!("Found Keepa tab (without ASIN match)");
+                }
+            }
+        }
+
+        let page_ws = page_ws?;
 
         let (mut ws, _) = connect_async(&page_ws).await.ok()?;
 

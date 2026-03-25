@@ -314,6 +314,25 @@ impl SearchOrchestrator {
                             }
                         }
                     }
+                    // Fallback: if Keepa didn't provide MSRP, fetch detail page for this ASIN
+                    let has_msrp = all_products.iter().any(|p| {
+                        p.platform_id == *best_asin && p.price.original_price.is_some()
+                    });
+
+                    if !has_msrp && *domain == crate::keepa::DOMAIN_US {
+                        info!("No Keepa MSRP, fetching detail page for {}", best_asin);
+                        let url = format!("https://www.amazon.com/dp/{}", best_asin);
+                        if let Some(details) = crate::cdp::fetch_amazon_us_details(cdp_port, &url).await {
+                            if let Some(msrp) = details.msrp {
+                                info!(asin = %best_asin, msrp = %msrp, "MSRP from detail page");
+                                for product in all_products.iter_mut() {
+                                    if product.platform_id == *best_asin {
+                                        product.price.original_price = Some(msrp);
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -395,6 +414,34 @@ impl SearchOrchestrator {
                     msrp = %msrp_brl,
                     "Filtered accessories by MSRP + title"
                 );
+            }
+        }
+
+        // Fallback: price-clustering filter when no MSRP is available.
+        // If prices span >10x range AND there are accessory-titled items,
+        // use the highest-priced product as reference and filter accessories below 20%.
+        if reference_msrp_brl.is_none() && all_products.len() > 3 {
+            let mut prices: Vec<Decimal> = all_products.iter().map(|p| p.price.total_cost).collect();
+            prices.sort();
+            let lowest = prices[0];
+            let highest = prices[prices.len() - 1];
+
+            if highest > lowest * Decimal::from(10) {
+                // Huge price spread — likely accessories mixed with actual product
+                let threshold = highest * rust_decimal_macros::dec!(0.15);
+                let before = all_products.len();
+                all_products.retain(|p| {
+                    p.price.total_cost >= threshold || !is_accessory_title(&p.title)
+                });
+                let filtered = before - all_products.len();
+                if filtered > 0 {
+                    debug!(
+                        filtered = filtered,
+                        threshold = %threshold,
+                        highest = %highest,
+                        "Filtered accessories by price clustering"
+                    );
+                }
             }
         }
 
