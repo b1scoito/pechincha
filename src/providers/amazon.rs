@@ -126,16 +126,14 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             .map(|el| el.text().collect::<String>().trim().to_string())
             .unwrap_or_else(|| "00".to_string());
 
-        if price_whole.is_empty() {
-            continue;
-        }
-
-        let price_str = format!("{price_whole}.{price_fraction}");
-        let price: Decimal = price_str.parse().unwrap_or(Decimal::ZERO);
-
-        if price == Decimal::ZERO {
-            continue;
-        }
+        // Keep zero-price products — they may have "Ver opções de compra" (See buying options).
+        // Price can be fetched from the detail page later.
+        let price: Decimal = if price_whole.is_empty() {
+            Decimal::ZERO
+        } else {
+            let price_str = format!("{price_whole}.{price_fraction}");
+            price_str.parse().unwrap_or(Decimal::ZERO)
+        };
 
         let link = card
             .select(&link_selector)

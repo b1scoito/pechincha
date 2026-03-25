@@ -208,6 +208,42 @@ impl SearchOrchestrator {
             }
         }
 
+        // For Amazon BR products: fetch price from detail pages for "See buying options" items.
+        if let Some(cdp_port) = self.cdp_port {
+            let amz_br_products: Vec<(usize, String)> = all_products
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| {
+                    p.provider == ProviderId::Amazon
+                        && !p.url.is_empty()
+                        && p.price.listed_price == Decimal::ZERO
+                        && is_relevant(&p.title, &query.query)
+                })
+                .take(3)
+                .map(|(i, p)| (i, p.url.clone()))
+                .collect();
+
+            if !amz_br_products.is_empty() {
+                eprintln!("  Fetching Amazon BR prices...");
+                for (idx, url) in &amz_br_products {
+                    // Fetch the page and extract price from the HTML
+                    if let Ok(html) = crate::cdp::fetch_page(cdp_port, url).await {
+                        if let Some(price) = extract_amazon_br_price(&html) {
+                            info!(idx = idx, price = %price, "Amazon BR price from detail page");
+                            all_products[*idx].price.listed_price = price;
+                            all_products[*idx].price.price_brl = price;
+                            all_products[*idx].price.total_cost = price;
+                        }
+                    }
+                }
+            }
+
+            // Remove Amazon BR products that still have zero price
+            all_products.retain(|p| {
+                p.provider != ProviderId::Amazon || p.price.listed_price > Decimal::ZERO
+            });
+        }
+
         // For AliExpress products: fetch exact tax from product detail pages.
         // AliExpress shows "R$X em impostos estimados" on product pages.
         // Fetch for the top 2 relevant AliExpress products.
@@ -739,6 +775,53 @@ fn is_accessory_title(title: &str) -> bool {
         "case", "capa", "película", "pelicula", "protetor",
     ];
     accessory_patterns.iter().any(|pat| lower.contains(pat))
+}
+
+/// Extract the main price from an Amazon BR product detail page HTML.
+fn extract_amazon_br_price(html: &str) -> Option<Decimal> {
+    // Look for the price in common Amazon BR selectors
+    let doc = scraper::Html::parse_document(html);
+
+    // Try multiple price selectors (Amazon changes these frequently)
+    let selectors = [
+        "span.a-price-whole",
+        "#corePrice_feature_div .a-price-whole",
+        "#priceblock_ourprice",
+        ".a-price .a-offscreen",
+    ];
+
+    for sel_str in &selectors {
+        if let Ok(sel) = scraper::Selector::parse(sel_str) {
+            if let Some(el) = doc.select(&sel).next() {
+                let text: String = el.text().collect();
+                let cleaned = text
+                    .replace('.', "")
+                    .replace(',', ".")
+                    .trim()
+                    .to_string();
+                if let Ok(price) = cleaned.parse::<Decimal>() {
+                    if price > Decimal::ZERO {
+                        return Some(price);
+                    }
+                }
+            }
+        }
+    }
+
+    // Fallback: regex on raw HTML for R$ price pattern
+    let re_pattern = r"R\$\s*([\d.]+),(\d{2})";
+    if let Some(caps) = regex_lite::Regex::new(re_pattern).ok().and_then(|re| re.captures(html)) {
+        let whole = caps.get(1)?.as_str().replace('.', "");
+        let frac = caps.get(2)?.as_str();
+        let price_str = format!("{whole}.{frac}");
+        if let Ok(price) = price_str.parse::<Decimal>() {
+            if price > Decimal::from(10) { // Sanity check: price should be reasonable
+                return Some(price);
+            }
+        }
+    }
+
+    None
 }
 
 fn truncate_str(s: &str, max: usize) -> String {
