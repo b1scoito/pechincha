@@ -40,12 +40,22 @@ pub fn print_results(results: &SearchResults, query: &str) {
     // Find best price for highlighting
     let best_price = results.products.iter().map(|p| p.price.total_cost).min();
 
-    // Find reference MSRP from Keepa
+    // Find reference MSRP from Keepa (any domain) or product data
     let reference_msrp_usd: Option<Decimal> = results.products.iter()
         .find_map(|p| {
+            // Try US MSRP first
             p.keepa.iter()
                 .find(|k| k.domain == crate::keepa::DOMAIN_US)
                 .and_then(|k| k.msrp())
+        })
+        .or_else(|| {
+            // Fallback: BR MSRP converted to USD
+            results.products.iter().find_map(|p| {
+                p.keepa.iter()
+                    .find(|k| k.domain == crate::keepa::DOMAIN_BR)
+                    .and_then(|k| k.msrp())
+                    .map(|brl| brl * k_br_to_usd())
+            })
         })
         .or_else(|| {
             results.products.iter()
@@ -429,6 +439,11 @@ fn truncate(s: &str, max: usize) -> String {
 
 fn dim_line(width: usize) -> String {
     DIM_LINE.repeat(width).dimmed().to_string()
+}
+
+/// Approximate BRL→USD rate for MSRP conversion when only BR data available.
+fn k_br_to_usd() -> Decimal {
+    rust_decimal_macros::dec!(0.19) // ~1/5.26
 }
 
 fn count_unique_providers(products: &[Product]) -> usize {

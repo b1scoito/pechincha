@@ -369,12 +369,17 @@ impl SearchOrchestrator {
                 };
 
                 if !insights.is_empty() {
-                    let us_msrp = insights.iter()
+                    // Find MSRP: prefer US list_price, fall back to any domain's list_price
+                    let msrp = insights.iter()
                         .find(|k| k.domain == crate::keepa::DOMAIN_US)
-                        .and_then(|k| k.msrp());
+                        .and_then(|k| k.msrp())
+                        .or_else(|| {
+                            // Fallback: any domain's MSRP (BR, CA, etc.)
+                            insights.iter().find_map(|k| k.msrp())
+                        });
 
-                    if let Some(msrp) = us_msrp {
-                        info!(asin = %best_asin, msrp = %msrp, domains = insights.len(), "Keepa MSRP");
+                    if let Some(ref m) = msrp {
+                        info!(asin = %best_asin, msrp = %m, domains = insights.len(), "Keepa MSRP");
                     }
 
                     // Attach Keepa data to ALL Amazon products with this ASIN
@@ -383,8 +388,8 @@ impl SearchOrchestrator {
 
                         product.keepa = insights.clone();
 
-                        if let Some(msrp) = us_msrp {
-                            product.price.original_price = Some(msrp);
+                        if let Some(m) = msrp {
+                            product.price.original_price = Some(m);
                         }
 
                         let own_domain = if product.provider == ProviderId::Amazon {
