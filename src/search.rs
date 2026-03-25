@@ -510,17 +510,18 @@ impl SearchOrchestrator {
 }
 
 /// Check if a product title is relevant to the search query.
-/// Uses a scoring system: each matching token adds a point.
-/// Products must match at least 50% of significant tokens, AND
-/// all "core" tokens (numbers like model numbers) must match.
+///
+/// Simple, strict rule: ALL significant query tokens must appear in the title.
+/// No partial matching, no thresholds, no core/non-core distinction.
+/// Every word the user typed matters.
+///
+/// Handles: accent normalization, hyphen splitting, compound numbers (v15 = "v15" or "v 15").
 fn is_relevant(title: &str, query: &str) -> bool {
-    let stop_words = &[
+    let stop_words: &[&str] = &[
         "de", "do", "da", "dos", "das", "para", "com", "sem", "por", "em", "no", "na",
         "the", "for", "with", "and", "or", "a", "an", "o", "e", "um", "uma",
     ];
 
-    // Normalize: lowercase, replace hyphens with spaces
-    // Keep letter-digit combinations intact (LP6, v2, 4070ti are single tokens)
     let normalize = |s: &str| -> String {
         s.to_lowercase()
             .replace('-', " ")
@@ -531,6 +532,7 @@ fn is_relevant(title: &str, query: &str) -> bool {
     };
 
     let title_norm = normalize(title);
+    let title_compact = title_norm.replace(' ', ""); // for compound matching: "v 15" → "v15"
 
     let query_tokens: Vec<String> = normalize(query)
         .split_whitespace()
@@ -542,42 +544,10 @@ fn is_relevant(title: &str, query: &str) -> bool {
         return true;
     }
 
-    // Core tokens: contain numbers or are product identifiers
-    let core_tokens: Vec<&str> = query_tokens
-        .iter()
-        .filter(|t| {
-            t.chars().any(|c| c.is_ascii_digit())
-                || ["rtx", "gtx", "rx", "ryzen", "intel", "amd", "iphone", "galaxy", "dyson"]
-                    .contains(&t.as_str())
-        })
-        .map(|s| s.as_str())
-        .collect();
-
-    // All core tokens must match — also try matching with spaces stripped
-    // so "6v2" matches "6 v2" and "lp6" matches "lp 6"
-    let title_no_spaces = title_norm.replace(' ', "");
-    let core_match = core_tokens
-        .iter()
-        .all(|token| title_norm.contains(token) || title_no_spaces.contains(token));
-
-    if !core_match {
-        return false;
-    }
-
-    // For short queries (≤3 tokens), require ALL tokens to match.
-    // "Moondrop Variations" must match both words, not just "Moondrop".
-    // For longer queries (4+), require 60% match to allow minor variations.
-    let total = query_tokens.len();
-    let matched = query_tokens
-        .iter()
-        .filter(|token| title_norm.contains(token.as_str()) || title_no_spaces.contains(token.as_str()))
-        .count();
-
-    if total <= 3 {
-        matched == total // ALL tokens must match for short queries
-    } else {
-        matched * 5 >= total * 3 // 60% for longer queries
-    }
+    // ALL tokens must match — either as substring in title, or in compact form
+    query_tokens.iter().all(|token| {
+        title_norm.contains(token.as_str()) || title_compact.contains(token.as_str())
+    })
 }
 
 /// Score how well a product title matches the search query.
