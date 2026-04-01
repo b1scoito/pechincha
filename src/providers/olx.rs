@@ -28,9 +28,8 @@ impl Olx {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Olx {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "OLX"
     }
 
@@ -70,7 +69,6 @@ impl Provider for Olx {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
     let start = html
@@ -92,113 +90,111 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
     let mut products = Vec::new();
 
     for ad in ads.iter().take(50) {
-        let title = ad["subject"]
-            .as_str()
-            .or_else(|| ad["title"].as_str())
-            .unwrap_or_default()
-            .to_string();
-
-        if title.is_empty() {
-            continue;
+        if let Some(product) = parse_olx_ad(ad) {
+            products.push(product);
         }
-
-        // priceValue is a string like "3500" (already in cents? no, it's the actual value)
-        let price = ad["priceValue"]
-            .as_str()
-            .and_then(|s| s.parse::<Decimal>().ok())
-            .or_else(|| {
-                // Fallback: parse "price" which may be "R$ 3.500"
-                ad["price"]
-                    .as_str()
-                    .and_then(parse_brl_price)
-            })
-            .unwrap_or(Decimal::ZERO);
-
-        if price == Decimal::ZERO {
-            continue;
-        }
-
-        let original_price = ad["oldPrice"]
-            .as_str()
-            .and_then(|s| s.parse::<Decimal>().ok());
-
-        let product_url = ad["friendlyUrl"]
-            .as_str()
-            .or_else(|| ad["url"].as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let image = ad["images"]
-            .as_array()
-            .and_then(|imgs| imgs.first())
-            .and_then(|img| {
-                img["original"]
-                    .as_str()
-                    .or_else(|| img["originalWebp"].as_str())
-            })
-            .map(std::string::ToString::to_string);
-
-        let list_id = ad["listId"]
-            .as_u64()
-            .map(|n| n.to_string())
-            .unwrap_or_default();
-
-        let seller_name = ad["user"]["displayName"]
-            .as_str()
-            .unwrap_or("Particular")
-            .to_string();
-
-        let is_professional = ad["professionalAd"].as_bool().unwrap_or(false);
-
-        // OLX items are typically used
-        let condition = if title.to_lowercase().contains("novo")
-            || title.to_lowercase().contains("lacrado")
-        {
-            ProductCondition::New
-        } else {
-            ProductCondition::Used
-        };
-
-        products.push(Product {
-            provider: ProviderId::Olx,
-            platform_id: list_id,
-            title,
-            normalized_title: None,
-            url: product_url,
-            image_url: image,
-            price: PriceInfo {
-                listed_price: price,
-                currency: Currency::BRL,
-                price_brl: price,
-                shipping_cost: None,
-                tax: TaxInfo {
-                    remessa_conforme: false,
-                    taxes_included: true,
-                    import_tax: None,
-                    icms: None,
-                    total_tax: Decimal::ZERO,
-                    tax_regime: TaxRegime::Domestic,
-                },
-                total_cost: price,
-                original_price,
-                installments: None,
-            },
-            seller: Some(SellerInfo {
-                name: seller_name,
-                reputation: None,
-                official_store: is_professional,
-            }),
-            condition,
-            rating: None,
-            review_count: None,
-            sold_count: None,
-            domestic: true,
-            fetched_at: Utc::now(),
-            keepa: Vec::new(),
-        });
     }
 
     Ok(products)
+}
+
+fn parse_olx_ad(ad: &serde_json::Value) -> Option<Product> {
+    let title = ad["subject"]
+        .as_str()
+        .or_else(|| ad["title"].as_str())
+        .unwrap_or_default()
+        .to_string();
+
+    if title.is_empty() {
+        return None;
+    }
+
+    let price = ad["priceValue"]
+        .as_str()
+        .and_then(|s| s.parse::<Decimal>().ok())
+        .or_else(|| ad["price"].as_str().and_then(parse_brl_price))
+        .unwrap_or(Decimal::ZERO);
+
+    if price == Decimal::ZERO {
+        return None;
+    }
+
+    let original_price = ad["oldPrice"]
+        .as_str()
+        .and_then(|s| s.parse::<Decimal>().ok());
+
+    let product_url = ad["friendlyUrl"]
+        .as_str()
+        .or_else(|| ad["url"].as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let image = ad["images"]
+        .as_array()
+        .and_then(|imgs| imgs.first())
+        .and_then(|img| {
+            img["original"]
+                .as_str()
+                .or_else(|| img["originalWebp"].as_str())
+        })
+        .map(std::string::ToString::to_string);
+
+    let list_id = ad["listId"]
+        .as_u64()
+        .map(|n| n.to_string())
+        .unwrap_or_default();
+
+    let seller_name = ad["user"]["displayName"]
+        .as_str()
+        .unwrap_or("Particular")
+        .to_string();
+
+    let is_professional = ad["professionalAd"].as_bool().unwrap_or(false);
+
+    let title_lower = title.to_lowercase();
+    let condition = if title_lower.contains("novo") || title_lower.contains("lacrado") {
+        ProductCondition::New
+    } else {
+        ProductCondition::Used
+    };
+
+    Some(Product {
+        provider: ProviderId::Olx,
+        platform_id: list_id,
+        title,
+        normalized_title: None,
+        url: product_url,
+        image_url: image,
+        price: PriceInfo {
+            listed_price: price,
+            currency: Currency::BRL,
+            price_brl: price,
+            shipping_cost: None,
+            tax: TaxInfo {
+                remessa_conforme: false,
+                taxes_included: true,
+                import_tax: None,
+                icms: None,
+                total_tax: Decimal::ZERO,
+                tax_regime: TaxRegime::Domestic,
+            },
+            total_cost: price,
+            original_price,
+            installments: None,
+        },
+        seller: Some(SellerInfo {
+            name: seller_name,
+            reputation: None,
+            official_store: is_professional,
+        }),
+        condition,
+        rating: None,
+        review_count: None,
+        sold_count: None,
+        domestic: true,
+        fetched_at: Utc::now(),
+        keepa: Vec::new(),
+    })
 }
 
 fn parse_brl_price(text: &str) -> Option<Decimal> {

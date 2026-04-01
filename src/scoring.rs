@@ -73,6 +73,7 @@ pub fn score_product(title: &str, query: &str, cluster_score: f64, gap_ratio: f6
 ///
 /// Products: "[QUERY] additional description" → high score
 /// Accessories: "replacement part for [QUERY]" → low score
+// String lengths are always small enough for exact f64 representation
 #[allow(clippy::cast_precision_loss)]
 fn title_structure_score(title: &str, query: &str) -> f64 {
     let title_norm = normalize(title);
@@ -179,8 +180,11 @@ fn title_structure_score(title: &str, query: &str) -> f64 {
 ///
 /// Returns `(scores, gap_ratio)` where `scores` is a Vec in the same order
 /// as the input, and `gap_ratio` is the detected price separation ratio.
+/// # Panics
+///
+/// Panics if price sorting produces an indeterminate ordering (e.g., NaN values).
+/// In practice this cannot happen because all prices are converted from `Decimal`.
 #[must_use]
-#[allow(clippy::missing_panics_doc)]
 pub fn price_cluster_scores(prices: &[Decimal], msrp_brl: Option<f64>) -> (Vec<f64>, f64) {
     if prices.is_empty() {
         return (vec![], 1.0);
@@ -319,6 +323,7 @@ pub fn price_cluster_scores(prices: &[Decimal], msrp_brl: Option<f64>) -> (Vec<f
 // ── Signal 3: String Similarity ─────────────────────────────────────────────
 
 /// Score how similar the title is to the query using token-level comparison.
+// String lengths are always small enough for exact f64 representation
 #[allow(clippy::cast_precision_loss)]
 fn string_similarity_score(title: &str, query: &str) -> f64 {
     let title_norm = normalize(title);

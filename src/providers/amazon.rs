@@ -29,9 +29,8 @@ impl Amazon {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Amazon {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Amazon BR"
     }
 
@@ -44,7 +43,7 @@ impl Provider for Amazon {
     }
 
     fn parse_html(&self, html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
-        parse_amazon_br_html(html, max_results)
+        Ok(parse_amazon_br_html(html, max_results))
     }
 
     async fn search(&self, query: &SearchQuery) -> Result<Vec<Product>, ProviderError> {
@@ -72,7 +71,7 @@ impl Provider for Amazon {
         let html = resp.text().await?;
         debug!(html_len = html.len(), "Amazon response");
 
-        let products = parse_amazon_br_html(&html, query.max_results)?;
+        let products = parse_amazon_br_html(&html, query.max_results);
 
         info!(results = products.len(), "Amazon BR search complete");
 
@@ -80,99 +79,32 @@ impl Provider for Amazon {
     }
 }
 
-#[allow(clippy::similar_names, clippy::too_many_lines, clippy::unnecessary_wraps)]
-fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
+fn parse_amazon_br_html(html: &str, _max_results: usize) -> Vec<Product> {
     let document = Html::parse_document(html);
 
-    let card_selector =
+    let card_sel =
         Selector::parse("div[data-component-type='s-search-result']").unwrap();
-    let title_selector = Selector::parse("h2 span").unwrap();
-    let price_whole_selector = Selector::parse("span.a-price-whole").unwrap();
-    let price_fraction_selector = Selector::parse("span.a-price-fraction").unwrap();
-    let link_selector = Selector::parse("h2 a.a-link-normal, h2 a[href*='/dp/'], a.s-underline-text").unwrap();
-    let img_selector = Selector::parse("img.s-image").unwrap();
-    let rating_selector = Selector::parse("span.a-icon-alt").unwrap();
-    let review_count_selector = Selector::parse("a[href*='customerReviews'] span.a-size-base, a[href*='customerReviews'] span.a-size-small").unwrap();
+    let title_sel = Selector::parse("h2 span").unwrap();
+    let price_whole_sel = Selector::parse("span.a-price-whole").unwrap();
+    let price_frac_sel = Selector::parse("span.a-price-fraction").unwrap();
+    let link_sel = Selector::parse("h2 a.a-link-normal, h2 a[href*='/dp/'], a.s-underline-text").unwrap();
+    let img_sel = Selector::parse("img.s-image").unwrap();
+    let rating_sel = Selector::parse("span.a-icon-alt").unwrap();
+    let review_sel = Selector::parse("a[href*='customerReviews'] span.a-size-base, a[href*='customerReviews'] span.a-size-small").unwrap();
 
     let mut products = Vec::new();
 
-    for card in document.select(&card_selector).take(50) {
-        let mut title = card
-            .select(&title_selector)
-            .next()
-            .map(|el| el.text().collect::<String>().trim().to_string())
-            .unwrap_or_default();
-
-        // If title is too short (just brand name), try image alt for full product name
-        if title.len() < 15 {
-            if let Some(alt) = card.select(&img_selector).next().and_then(|el| el.value().attr("alt")) {
-                if alt.len() > title.len() {
-                    title = alt.trim().to_string();
-                }
-            }
-        }
-
+    for card in document.select(&card_sel).take(50) {
+        let title = extract_amazon_title(&card, &title_sel, &img_sel);
         if title.is_empty() {
             continue;
         }
 
-        let price_whole = card
-            .select(&price_whole_selector)
-            .next()
-            .map(|el| {
-                el.text()
-                    .collect::<String>()
-                    .replace(['.', ','], "")
-                    .trim()
-                    .to_string()
-            })
-            .unwrap_or_default();
-
-        let price_fraction = card
-            .select(&price_fraction_selector)
-            .next()
-            .map_or_else(|| "00".to_string(), |el| el.text().collect::<String>().trim().to_string());
-
-        // Keep zero-price products — they may have "Ver opções de compra" (See buying options).
-        // Price can be fetched from the detail page later.
-        let price: Decimal = if price_whole.is_empty() {
-            Decimal::ZERO
-        } else {
-            let price_str = format!("{price_whole}.{price_fraction}");
-            price_str.parse().unwrap_or(Decimal::ZERO)
-        };
-
-        let link = card
-            .select(&link_selector)
-            .next()
-            .and_then(|el| el.value().attr("href"))
-            .map(|href| {
-                if href.starts_with('/') {
-                    format!("https://www.amazon.com.br{href}")
-                } else {
-                    href.to_string()
-                }
-            })
-            .unwrap_or_default();
-
-        let image = card
-            .select(&img_selector)
-            .next()
-            .and_then(|el| el.value().attr("src"))
-            .map(std::string::ToString::to_string);
-
-        let rating = card.select(&rating_selector).next().and_then(|el| {
-            let text = el.text().collect::<String>();
-            text.split(' ')
-                .next()
-                .and_then(|s| s.replace(',', ".").parse::<f32>().ok())
-        });
-
-        let review_count = card.select(&review_count_selector).next().and_then(|el| {
-            let text = el.text().collect::<String>();
-            text.replace(['.', ','], "").trim().parse::<u32>().ok()
-        });
-
+        let price = extract_amazon_price(&card, &price_whole_sel, &price_frac_sel);
+        let link = extract_amazon_link(&card, &link_sel, "https://www.amazon.com.br");
+        let image = extract_image(&card, &img_sel);
+        let rating = extract_rating(&card, &rating_sel);
+        let review_count = extract_review_count(&card, &review_sel);
         let asin = card.value().attr("data-asin").unwrap_or("").to_string();
 
         // Fallback: construct URL from ASIN if link selector didn't match
@@ -217,5 +149,98 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
         });
     }
 
-    Ok(products)
+    products
+}
+
+fn extract_amazon_title(
+    card: &scraper::ElementRef<'_>,
+    title_sel: &Selector,
+    img_sel: &Selector,
+) -> String {
+    let mut title = card
+        .select(title_sel)
+        .next()
+        .map(|el| el.text().collect::<String>().trim().to_string())
+        .unwrap_or_default();
+
+    // If title is too short (just brand name), try image alt for full product name
+    if title.len() < 15 {
+        if let Some(alt) = card.select(img_sel).next().and_then(|el| el.value().attr("alt")) {
+            if alt.len() > title.len() {
+                title = alt.trim().to_string();
+            }
+        }
+    }
+
+    title
+}
+
+fn extract_amazon_price(
+    card: &scraper::ElementRef<'_>,
+    whole_sel: &Selector,
+    frac_sel: &Selector,
+) -> Decimal {
+    let whole = card
+        .select(whole_sel)
+        .next()
+        .map(|el| {
+            el.text()
+                .collect::<String>()
+                .replace(['.', ','], "")
+                .trim()
+                .to_string()
+        })
+        .unwrap_or_default();
+
+    let fraction = card
+        .select(frac_sel)
+        .next()
+        .map_or_else(|| "00".to_string(), |el| el.text().collect::<String>().trim().to_string());
+
+    if whole.is_empty() {
+        Decimal::ZERO
+    } else {
+        format!("{whole}.{fraction}").parse().unwrap_or(Decimal::ZERO)
+    }
+}
+
+fn extract_amazon_link(
+    card: &scraper::ElementRef<'_>,
+    link_sel: &Selector,
+    base_url: &str,
+) -> String {
+    card.select(link_sel)
+        .next()
+        .and_then(|el| el.value().attr("href"))
+        .map(|href| {
+            if href.starts_with('/') {
+                format!("{base_url}{href}")
+            } else {
+                href.to_string()
+            }
+        })
+        .unwrap_or_default()
+}
+
+fn extract_image(card: &scraper::ElementRef<'_>, img_sel: &Selector) -> Option<String> {
+    card.select(img_sel)
+        .next()
+        .and_then(|el| el.value().attr("src"))
+        .map(std::string::ToString::to_string)
+}
+
+fn extract_rating(card: &scraper::ElementRef<'_>, rating_sel: &Selector) -> Option<f32> {
+    card.select(rating_sel).next().and_then(|el| {
+        let text = el.text().collect::<String>();
+        text.split(' ')
+            .next()
+            .and_then(|s| s.replace(',', ".").parse::<f32>().ok())
+    })
+}
+
+fn extract_review_count(card: &scraper::ElementRef<'_>, review_sel: &Selector) -> Option<u32> {
+    card.select(review_sel).next().and_then(|el| {
+        let text = el.text().collect::<String>();
+        text.replace(['.', ','], "").trim().parse::<u32>().ok()
+    })
 }

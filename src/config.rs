@@ -145,7 +145,12 @@ impl Default for AmazonConfig {
 }
 
 impl PechinchaConfig {
-    #[allow(clippy::missing_errors_doc)]
+    /// Load configuration from the given path, or the default config path.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error string if the config file exists but cannot be read
+    /// or contains invalid TOML syntax.
     pub fn load(path: Option<&Path>) -> Result<Self, String> {
         let config_path = path
             .map_or_else(default_config_path, PathBuf::from);
@@ -167,8 +172,12 @@ impl PechinchaConfig {
         toml::to_string_pretty(&default).unwrap_or_default()
     }
 
-    /// Save config to the default path, creating directories if needed.
-    #[allow(clippy::missing_errors_doc)]
+    /// Save config to the given path (or the default path), creating directories if needed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error string if the parent directory cannot be created,
+    /// the config cannot be serialized to TOML, or the file cannot be written.
     pub fn save(&self, path: Option<&Path>) -> Result<(), String> {
         let config_path = path
             .map_or_else(default_config_path, PathBuf::from);

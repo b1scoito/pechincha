@@ -28,9 +28,8 @@ impl Kabum {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Kabum {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Kabum"
     }
 
@@ -126,11 +125,14 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
             .and_then(|img| img.as_str())
             .map(std::string::ToString::to_string);
 
+        // Rating scores are 0.0–5.0, no precision loss narrowing to f32
         #[allow(clippy::cast_possible_truncation)]
         let rating = item["averageScore"]
             .as_f64()
-            .map(|r| r as f32)
-            .filter(|r| *r > 0.0);
+            .and_then(|r| {
+                let score = r as f32;
+                if score > 0.0 { Some(score) } else { None }
+            });
 
         let installments_str = item["maxInstallment"].as_str().unwrap_or("");
         let installments = parse_kabum_installments(installments_str);

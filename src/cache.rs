@@ -40,10 +40,11 @@ impl SearchCache {
         query.query.to_lowercase().trim().hash(&mut hasher);
         // Include sort and platforms in the key
         format!("{:?}", query.sort).hash(&mut hasher);
-        #[allow(clippy::collection_is_never_read)]
-        let mut platforms: Vec<String> = query.platforms.iter().map(std::string::ToString::to_string).collect();
-        platforms.sort();
-        platforms.hash(&mut hasher);
+        let mut platform_names: Vec<String> = query.platforms.iter().map(std::string::ToString::to_string).collect();
+        platform_names.sort();
+        for name in &platform_names {
+            name.hash(&mut hasher);
+        }
         format!("{:016x}.json", hasher.finish())
     }
 

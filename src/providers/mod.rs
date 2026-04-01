@@ -86,21 +86,32 @@ impl std::str::FromStr for ProviderId {
     }
 }
 
+// async_trait macro expansion creates lifetime bounds that trigger this lint;
+// it cannot be fixed without removing async_trait entirely.
+#[allow(clippy::unnecessary_literal_bound)]
 #[async_trait]
-#[allow(clippy::missing_errors_doc, clippy::unnecessary_literal_bound)]
 pub trait Provider: Send + Sync {
-    fn name(&self) -> &str;
+    fn name(&self) -> &'static str;
     fn id(&self) -> ProviderId;
     fn is_available(&self) -> bool;
 
     /// wreq mode: provider handles its own HTTP request.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ProviderError` when the HTTP request fails, the response
+    /// status indicates an error, or the response body cannot be parsed.
     async fn search(&self, query: &SearchQuery) -> Result<Vec<Product>, ProviderError>;
 
     /// CDP mode: parse pre-fetched HTML from the real browser.
-    /// Default implementation calls `search()` as fallback.
-    #[allow(clippy::missing_errors_doc)]
+    /// Default implementation returns a parse error for providers that
+    /// have not implemented HTML parsing yet.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ProviderError::Parse` when the HTML structure is
+    /// unrecognised or required data cannot be extracted.
     fn parse_html(&self, _html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
-        // Default: providers that haven't implemented parse_html yet
         Err(ProviderError::Parse("parse_html not implemented for this provider".into()))
     }
 }

@@ -25,9 +25,8 @@ impl GoogleShopping {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for GoogleShopping {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Google Shopping"
     }
 
@@ -40,7 +39,7 @@ impl Provider for GoogleShopping {
     }
 
     fn parse_html(&self, html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
-        parse_google_shopping_html(html, max_results)
+        Ok(parse_google_shopping_html(html, max_results))
     }
 
     async fn search(&self, _query: &SearchQuery) -> Result<Vec<Product>, ProviderError> {
@@ -50,17 +49,12 @@ impl Provider for GoogleShopping {
     }
 }
 
-#[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
-fn parse_google_shopping_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+fn parse_google_shopping_html(html: &str, max_results: usize) -> Vec<Product> {
     let document = Html::parse_document(html);
     let mut products = Vec::new();
     let mut seen_titles = std::collections::HashSet::new();
 
     let price_re = Regex::new(r"R\$\s*([\d.]+,\d{2})").unwrap();
-
-    // Strategy: find all <h3> tags as product title anchors.
-    // Google Shopping uses h3 for product titles — this is stable across redesigns.
-    // Then walk up to find the parent card, extract price and store link.
     let h3_sel = Selector::parse("h3").unwrap();
     let link_sel = Selector::parse("a[href]").unwrap();
 
@@ -68,107 +62,26 @@ fn parse_google_shopping_html(html: &str, max_results: usize) -> Result<Vec<Prod
         if products.len() >= max_results { break; }
 
         let title = h3.text().collect::<String>().trim().to_string();
+        if !is_valid_gs_title(&title) { continue; }
 
-        // Skip non-product headings
-        if title.len() < 15 { continue; }
-        if title.contains("patrocinado") || title.contains("Sobre esse")
-            || title.contains("Avaliações") || title.contains("Mais opções")
-            || title.contains("avaliações") { continue; }
-
-        // Deduplicate
         let title_lower = title.to_lowercase();
         if !seen_titles.insert(title_lower) { continue; }
 
-        // Walk up to find the product card (parent chain up to 5 levels)
-        let mut card_text = String::new();
-        let mut card_html = String::new();
-        let mut node = h3.parent();
-        for _ in 0..5 {
-            if let Some(n) = node {
-                if let Some(el_ref) = scraper::ElementRef::wrap(n) {
-                    let text: String = el_ref.text().collect();
-                    let html = el_ref.html();
-                    // Stop when we find a div that contains both title and price
-                    if text.contains("R$") && el_ref.value().name() == "div" {
-                        card_text = text;
-                        card_html = html;
-                        break;
-                    }
-                    card_text = text;
-                    card_html = html;
-                }
-                node = n.parent();
-            } else {
-                break;
-            }
-        }
-
+        let (card_text, card_html) = walk_up_to_card(&h3);
         if card_text.is_empty() { continue; }
 
-        // Extract price from card text
         let price = price_re.captures(&card_text)
             .map_or(Decimal::ZERO, |cap| parse_brl_price(cap.get(1).unwrap().as_str()));
-
         if price == Decimal::ZERO { continue; }
 
-        // Extract store URL — find <a> linking to actual stores
-        let url = {
-            let card_doc = Html::parse_fragment(&card_html);
-            card_doc.select(&link_sel)
-                .filter_map(|a| a.value().attr("href"))
-                .find(|href| {
-                    href.contains("mercadolivre") || href.contains("amazon")
-                        || href.contains("magazineluiza") || href.contains("kabum")
-                        || href.contains("shopee") || href.contains("aliexpress")
-                        || href.contains("/shopping/product/")
-                        || (href.starts_with("http") && !href.contains("google.com"))
-                })
-                .map(std::string::ToString::to_string)
-                .unwrap_or_default()
-        };
-
-        // Extract store name from card text
-        let store = extract_store_name(&card_text);
-
-        let seller = store.map(|name| SellerInfo {
+        let url = extract_gs_store_url(&card_html, &link_sel);
+        let seller = extract_store_name(&card_text).map(|name| SellerInfo {
             name,
             reputation: None,
             official_store: false,
         });
 
-        products.push(Product {
-            provider: ProviderId::GoogleShopping,
-            platform_id: String::new(),
-            title,
-            normalized_title: None,
-            url,
-            image_url: None,
-            price: PriceInfo {
-                listed_price: price,
-                currency: Currency::BRL,
-                price_brl: price,
-                shipping_cost: None,
-                tax: TaxInfo {
-                    remessa_conforme: false,
-                    taxes_included: true,
-                    import_tax: None,
-                    icms: None,
-                    total_tax: Decimal::ZERO,
-                    tax_regime: TaxRegime::Domestic,
-                },
-                total_cost: price,
-                original_price: None,
-                installments: None,
-            },
-            seller,
-            condition: ProductCondition::New,
-            rating: None,
-            review_count: None,
-            sold_count: None,
-            domestic: true,
-            fetched_at: Utc::now(),
-            keepa: Vec::new(),
-        });
+        products.push(build_gs_product(title, price, url, seller));
     }
 
     // Fallback: regex-based extraction from raw HTML
@@ -178,7 +91,92 @@ fn parse_google_shopping_html(html: &str, max_results: usize) -> Result<Vec<Prod
     }
 
     info!(results = products.len(), "Google Shopping parsed");
-    Ok(products)
+    products
+}
+
+fn is_valid_gs_title(title: &str) -> bool {
+    title.len() >= 15
+        && !title.contains("patrocinado")
+        && !title.contains("Sobre esse")
+        && !title.contains("Avaliações")
+        && !title.contains("Mais opções")
+        && !title.contains("avaliações")
+}
+
+fn walk_up_to_card(h3: &scraper::ElementRef<'_>) -> (String, String) {
+    let mut card_text = String::new();
+    let mut card_html = String::new();
+    let mut node = h3.parent();
+
+    for _ in 0..5 {
+        if let Some(n) = node {
+            if let Some(el_ref) = scraper::ElementRef::wrap(n) {
+                let text: String = el_ref.text().collect();
+                let html_content = el_ref.html();
+                if text.contains("R$") && el_ref.value().name() == "div" {
+                    return (text, html_content);
+                }
+                card_text = text;
+                card_html = html_content;
+            }
+            node = n.parent();
+        } else {
+            break;
+        }
+    }
+
+    (card_text, card_html)
+}
+
+fn extract_gs_store_url(card_html: &str, link_sel: &Selector) -> String {
+    let card_doc = Html::parse_fragment(card_html);
+    card_doc.select(link_sel)
+        .filter_map(|a| a.value().attr("href"))
+        .find(|href| {
+            href.contains("mercadolivre") || href.contains("amazon")
+                || href.contains("magazineluiza") || href.contains("kabum")
+                || href.contains("shopee") || href.contains("aliexpress")
+                || href.contains("/shopping/product/")
+                || (href.starts_with("http") && !href.contains("google.com"))
+        })
+        .map(std::string::ToString::to_string)
+        .unwrap_or_default()
+}
+
+fn build_gs_product(title: String, price: Decimal, url: String, seller: Option<SellerInfo>) -> Product {
+    Product {
+        provider: ProviderId::GoogleShopping,
+        platform_id: String::new(),
+        title,
+        normalized_title: None,
+        url,
+        image_url: None,
+        price: PriceInfo {
+            listed_price: price,
+            currency: Currency::BRL,
+            price_brl: price,
+            shipping_cost: None,
+            tax: TaxInfo {
+                remessa_conforme: false,
+                taxes_included: true,
+                import_tax: None,
+                icms: None,
+                total_tax: Decimal::ZERO,
+                tax_regime: TaxRegime::Domestic,
+            },
+            total_cost: price,
+            original_price: None,
+            installments: None,
+        },
+        seller,
+        condition: ProductCondition::New,
+        rating: None,
+        review_count: None,
+        sold_count: None,
+        domestic: true,
+        fetched_at: Utc::now(),
+        keepa: Vec::new(),
+    }
 }
 
 /// Extract store name from card text by looking for known patterns.

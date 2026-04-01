@@ -28,9 +28,8 @@ impl Ebay {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Ebay {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "eBay"
     }
 
@@ -43,7 +42,7 @@ impl Provider for Ebay {
     }
 
     fn parse_html(&self, html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
-        parse_ebay_html(html, max_results)
+        Ok(parse_ebay_html(html, max_results))
     }
 
     async fn search(&self, query: &SearchQuery) -> Result<Vec<Product>, ProviderError> {
@@ -66,126 +65,47 @@ impl Provider for Ebay {
         let html = resp.text().await?;
         debug!(html_len = html.len(), "eBay response");
 
-        let products = parse_ebay_html(&html, query.max_results)?;
+        let products = parse_ebay_html(&html, query.max_results);
         info!(results = products.len(), "eBay search complete");
 
         Ok(products)
     }
 }
 
-#[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
-fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+fn parse_ebay_html(html: &str, max_results: usize) -> Vec<Product> {
     let document = Html::parse_document(html);
     let mut products = Vec::new();
 
-    // eBay 2024+ uses .s-card for product cards (replaced .s-item)
     let card_sel = Selector::parse(".s-card, .s-item, li[data-viewport]").unwrap();
     let link_sel = Selector::parse("a[href*='/itm/'], a[href*='ebay.com/itm']").unwrap();
     let img_sel = Selector::parse("img[src*='ebayimg'], img[data-src*='ebayimg']").unwrap();
 
-    let brl_re = regex_lite::Regex::new(r"R\$\s*([\d.]+,\d{2})").unwrap();
-    let usd_re = regex_lite::Regex::new(r"US\s*\$\s*([\d,]+\.?\d*)").unwrap();
-    // Shipping in BRL: "+R$ 443,91 de frete" / "+ R$ 6.513,01 entrega"
+    let price_brl_re = regex_lite::Regex::new(r"R\$\s*([\d.]+,\d{2})").unwrap();
+    let price_usd_re = regex_lite::Regex::new(r"US\s*\$\s*([\d,]+\.?\d*)").unwrap();
     let ship_brl_re = regex_lite::Regex::new(r"\+\s*R\$\s*([\d.]+,\d{2})\s*(?:de\s+)?(?:entrega|frete|envio)").unwrap();
-    // Shipping in USD: "+US $85.69 shipping" / "+US $1,230.99 de frete"
     let ship_usd_re = regex_lite::Regex::new(r"\+\s*US\s*\$\s*([\d,]+\.?\d*)\s*(?:de\s+)?(?:shipping|entrega|frete)").unwrap();
 
     for card in document.select(&card_sel).take(max_results + 10) {
         if products.len() >= max_results { break; }
 
         let text = card.text().collect::<String>();
+        if !is_valid_ebay_card(&text) { continue; }
 
-        // Skip non-product cards
-        if text.len() < 30 { continue; }
-        if text.contains("Shop on eBay") || text.contains("Resultados") { continue; }
-
-        // Title: first substantial line of text, or from link title
-        let title = card.select(&link_sel).next()
-            .and_then(|a| {
-                // Try aria-label or title attribute first
-                a.value().attr("aria-label")
-                    .or_else(|| a.value().attr("title"))
-                    .map(|s| s.trim().to_string())
-            })
-            .or_else(|| {
-                // Fallback: first line of card text
-                text.lines()
-                    .map(str::trim)
-                    .find(|l| l.len() > 15 && !l.starts_with("R$") && !l.starts_with("US"))
-                    .map(std::string::ToString::to_string)
-            })
-            .unwrap_or_default();
-
+        let title = extract_ebay_title(&card, &link_sel, &text);
         if title.is_empty() || title.len() < 10 { continue; }
 
-        // Price: prefer USD, fallback to BRL
-        let (price, currency) = if let Some(cap) = usd_re.captures(&text) {
-            let s = cap.get(1).unwrap().as_str().replace(',', "");
-            let p = s.parse::<Decimal>().unwrap_or(Decimal::ZERO);
-            (p, Currency::USD)
-        } else if let Some(cap) = brl_re.captures(&text) {
-            let s = cap.get(1).unwrap().as_str().replace('.', "").replace(',', ".");
-            let p = s.parse::<Decimal>().unwrap_or(Decimal::ZERO);
-            (p, Currency::BRL)
-        } else {
-            continue;
-        };
-
-        // Skip items under $2 / R$10
+        let Some((price, currency)) = extract_ebay_price(&text, &price_usd_re, &price_brl_re) else { continue };
         if price < Decimal::from(2) { continue; }
-        // Skip price ranges ("R$ 256,39 a R$ 1.564,49") — these are multi-variant listings
         if text.contains(" a R$") || text.contains(" to ") { continue; }
 
-        // URL
-        let url = card.select(&link_sel).next()
-            .and_then(|el| el.value().attr("href"))
-            .map(std::string::ToString::to_string)
-            .unwrap_or_default();
-
+        let url = extract_ebay_url(&card, &link_sel);
         if url.is_empty() { continue; }
 
-        // Image
-        let image = card.select(&img_sel).next()
-            .and_then(|el| el.value().attr("src").or_else(|| el.value().attr("data-src")))
-            .map(std::string::ToString::to_string);
-
-        // Condition from card text
+        let image = extract_ebay_image(&card, &img_sel);
         let text_lower = text.to_lowercase();
-        let condition = if text_lower.contains("refurbished") || text_lower.contains("recondicionado") {
-            ProductCondition::Refurbished
-        } else if text_lower.contains("pre-owned") || text_lower.contains("usado") || text_lower.contains("seminovo") {
-            ProductCondition::Used
-        } else if text_lower.contains("brand new") || text_lower.contains("novo em folha") || text_lower.contains("novo") {
-            ProductCondition::New
-        } else {
-            ProductCondition::Unknown
-        };
-
-        // Shipping from text: extract cost or detect free shipping
-        let shipping = if text_lower.contains("frete grátis") || text_lower.contains("free shipping") {
-            Some(Decimal::ZERO)
-        } else if let Some(cap) = ship_brl_re.captures(&text) {
-            let s = cap.get(1).unwrap().as_str().replace('.', "").replace(',', ".");
-            s.parse::<Decimal>().ok()
-        } else if let Some(cap) = ship_usd_re.captures(&text) {
-            let s = cap.get(1).unwrap().as_str().replace(',', "");
-            // Store USD shipping — will be converted alongside the price in search.rs
-            s.parse::<Decimal>().ok()
-        } else {
-            None
-        };
-
-        // Extract eBay item ID from URL
-        let platform_id = url.split("/itm/")
-            .nth(1)
-            .and_then(|s| s.split('?').next())
-            .unwrap_or("")
-            .to_string();
-
-        // ebay.com is the US site — all items ship internationally to Brazil.
-        // Even when eBay shows BRL-converted prices for Brazilian visitors,
-        // these are still US-based sellers and subject to import taxes.
-        let is_domestic = false;
+        let condition = detect_ebay_condition(&text_lower);
+        let shipping = extract_ebay_shipping(&text, &text_lower, &ship_brl_re, &ship_usd_re);
+        let platform_id = extract_ebay_item_id(&url);
 
         products.push(Product {
             provider: ProviderId::Ebay,
@@ -201,11 +121,11 @@ fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
                 shipping_cost: shipping,
                 tax: TaxInfo {
                     remessa_conforme: false,
-                    taxes_included: is_domestic,
+                    taxes_included: false,
                     import_tax: None,
                     icms: None,
                     total_tax: Decimal::ZERO,
-                    tax_regime: if is_domestic { TaxRegime::Domestic } else { TaxRegime::Unknown },
+                    tax_regime: TaxRegime::Unknown,
                 },
                 total_cost: price + shipping.unwrap_or(Decimal::ZERO),
                 original_price: None,
@@ -216,12 +136,110 @@ fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
             rating: None,
             review_count: None,
             sold_count: None,
-            domestic: is_domestic,
+            domestic: false,
             fetched_at: Utc::now(),
             keepa: Vec::new(),
         });
     }
 
     info!(results = products.len(), "eBay parsed");
-    Ok(products)
+    products
+}
+
+fn is_valid_ebay_card(text: &str) -> bool {
+    text.len() >= 30
+        && !text.contains("Shop on eBay")
+        && !text.contains("Resultados")
+}
+
+fn extract_ebay_title(
+    card: &scraper::ElementRef<'_>,
+    link_sel: &Selector,
+    text: &str,
+) -> String {
+    card.select(link_sel).next()
+        .and_then(|a| {
+            a.value().attr("aria-label")
+                .or_else(|| a.value().attr("title"))
+                .map(|s| s.trim().to_string())
+        })
+        .or_else(|| {
+            text.lines()
+                .map(str::trim)
+                .find(|l| l.len() > 15 && !l.starts_with("R$") && !l.starts_with("US"))
+                .map(std::string::ToString::to_string)
+        })
+        .unwrap_or_default()
+}
+
+fn extract_ebay_price(
+    text: &str,
+    usd_re: &regex_lite::Regex,
+    brl_re: &regex_lite::Regex,
+) -> Option<(Decimal, Currency)> {
+    usd_re.captures(text)
+        .map(|cap| {
+            let s = cap.get(1).unwrap().as_str().replace(',', "");
+            let p = s.parse::<Decimal>().unwrap_or(Decimal::ZERO);
+            (p, Currency::USD)
+        })
+        .or_else(|| {
+            brl_re.captures(text).map(|cap| {
+                let s = cap.get(1).unwrap().as_str().replace('.', "").replace(',', ".");
+                let p = s.parse::<Decimal>().unwrap_or(Decimal::ZERO);
+                (p, Currency::BRL)
+            })
+        })
+}
+
+fn extract_ebay_url(card: &scraper::ElementRef<'_>, link_sel: &Selector) -> String {
+    card.select(link_sel).next()
+        .and_then(|el| el.value().attr("href"))
+        .map(std::string::ToString::to_string)
+        .unwrap_or_default()
+}
+
+fn extract_ebay_image(card: &scraper::ElementRef<'_>, img_sel: &Selector) -> Option<String> {
+    card.select(img_sel).next()
+        .and_then(|el| el.value().attr("src").or_else(|| el.value().attr("data-src")))
+        .map(std::string::ToString::to_string)
+}
+
+fn detect_ebay_condition(text_lower: &str) -> ProductCondition {
+    if text_lower.contains("refurbished") || text_lower.contains("recondicionado") {
+        ProductCondition::Refurbished
+    } else if text_lower.contains("pre-owned") || text_lower.contains("usado") || text_lower.contains("seminovo") {
+        ProductCondition::Used
+    } else if text_lower.contains("brand new") || text_lower.contains("novo em folha") || text_lower.contains("novo") {
+        ProductCondition::New
+    } else {
+        ProductCondition::Unknown
+    }
+}
+
+fn extract_ebay_shipping(
+    text: &str,
+    text_lower: &str,
+    ship_brl_re: &regex_lite::Regex,
+    ship_usd_re: &regex_lite::Regex,
+) -> Option<Decimal> {
+    if text_lower.contains("frete grátis") || text_lower.contains("free shipping") {
+        Some(Decimal::ZERO)
+    } else if let Some(cap) = ship_brl_re.captures(text) {
+        let s = cap.get(1).unwrap().as_str().replace('.', "").replace(',', ".");
+        s.parse::<Decimal>().ok()
+    } else if let Some(cap) = ship_usd_re.captures(text) {
+        let s = cap.get(1).unwrap().as_str().replace(',', "");
+        s.parse::<Decimal>().ok()
+    } else {
+        None
+    }
+}
+
+fn extract_ebay_item_id(url: &str) -> String {
+    url.split("/itm/")
+        .nth(1)
+        .and_then(|s| s.split('?').next())
+        .unwrap_or("")
+        .to_string()
 }

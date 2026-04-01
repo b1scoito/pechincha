@@ -244,7 +244,6 @@ pub struct AmazonUsDetails {
 }
 
 /// Fetch Amazon US product detail page and extract price, shipping, and MSRP.
-#[allow(clippy::too_many_lines)]
 pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option<AmazonUsDetails> {
     debug!("Amazon US detail: connecting...");
     let browser = get_browser(cdp_port).await.ok()?;
@@ -278,8 +277,29 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
     )).await;
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    // Extract product price + shipping/import from the detail page
+    // Extract all data via a single JS evaluation
     debug!("Amazon US detail: extracting price data...");
+    let data = evaluate_us_detail_js(&page).await;
+
+    debug!("Amazon US detail: closing tab...");
+    let _ = page.close().await;
+    debug!("Amazon US detail: done");
+
+    let data = data?;
+
+    let product_price = extract_us_price(&data);
+    let msrp = extract_us_msrp(&data);
+    let shipping_import = extract_us_shipping(&data);
+
+    let sold_by = data["soldBy"].as_str().map(std::string::ToString::to_string);
+    let ships_from = data["shipsFrom"].as_str().map(std::string::ToString::to_string);
+
+    Some(AmazonUsDetails { product_price, shipping_import, msrp, sold_by, ships_from })
+}
+
+/// Run the JS evaluation that extracts price, MSRP, shipping, and seller data
+/// from an Amazon US detail page. Returns the parsed JSON object.
+async fn evaluate_us_detail_js(page: &chaser_oxide::Page) -> Option<serde_json::Value> {
     let result = match tokio::time::timeout(Duration::from_secs(10), page.evaluate(
         r#"(() => {
             const all = document.body?.innerText || '';
@@ -391,28 +411,34 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
         Err(_) => { warn!("Amazon US evaluate timed out"); Err(()) }
     };
 
-    debug!("Amazon US detail: closing tab...");
-    let _ = page.close().await;
-    debug!("Amazon US detail: done");
-
     let json_str = match result {
         Ok(eval_result) => {
             let val = eval_result.value().cloned().unwrap_or(serde_json::Value::Null);
             val.as_str().unwrap_or("{}").to_string()
         }
-        _ => return None,
+        Err(()) => return None,
     };
-    let data: serde_json::Value = serde_json::from_str(&json_str).ok()?;
+    serde_json::from_str(&json_str).ok()
+}
 
-    let product_price: Option<rust_decimal::Decimal> = data["productPrice"]
+/// Extract the product price from the JS evaluation result.
+fn extract_us_price(data: &serde_json::Value) -> Option<rust_decimal::Decimal> {
+    data["productPrice"]
         .as_str()
-        .and_then(|s| s.replace(',', "").parse().ok());
+        .and_then(|s| s.replace(',', "").parse().ok())
+}
 
-    let msrp: Option<rust_decimal::Decimal> = data["msrp"]
+/// Extract the MSRP / List Price from the JS evaluation result.
+fn extract_us_msrp(data: &serde_json::Value) -> Option<rust_decimal::Decimal> {
+    data["msrp"]
         .as_str()
-        .and_then(|s| s.replace(',', "").parse().ok());
+        .and_then(|s| s.replace(',', "").parse().ok())
+}
 
-    let shipping_import = data["combined"].as_str().map_or_else(|| {
+/// Extract shipping + import charges from the JS evaluation result.
+/// Tries the combined field first, then sums individual shipping and import fees.
+fn extract_us_shipping(data: &serde_json::Value) -> Option<rust_decimal::Decimal> {
+    data["combined"].as_str().map_or_else(|| {
         let shipping: rust_decimal::Decimal = data["shipping"].as_str()
             .and_then(|s| s.replace(',', "").parse().ok())
             .unwrap_or_default();
@@ -421,12 +447,7 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
             .unwrap_or_default();
         let total = shipping + import;
         if total > rust_decimal::Decimal::ZERO { Some(total) } else { None }
-    }, |combined| combined.replace(',', "").parse::<rust_decimal::Decimal>().ok());
-
-    let sold_by = data["soldBy"].as_str().map(std::string::ToString::to_string);
-    let ships_from = data["shipsFrom"].as_str().map(std::string::ToString::to_string);
-
-    Some(AmazonUsDetails { product_price, shipping_import, msrp, sold_by, ships_from })
+    }, |combined| combined.replace(',', "").parse::<rust_decimal::Decimal>().ok())
 }
 
 /// Fetch multiple pages concurrently — opens all tabs at once.

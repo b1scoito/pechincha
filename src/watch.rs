@@ -62,7 +62,12 @@ impl WatchStore {
         }
     }
 
-    #[allow(clippy::missing_panics_doc)]
+    /// Add a new price watch and persist to disk.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal watches list is empty after pushing the new entry,
+    /// which cannot happen in practice.
     pub fn add(&mut self, query: String, max_price: Decimal, platforms: Vec<ProviderId>) -> &Watch {
         self.next_id += 1;
         self.watches.push(Watch {

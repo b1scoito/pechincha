@@ -19,9 +19,8 @@ impl Shopee {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Shopee {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Shopee"
     }
 

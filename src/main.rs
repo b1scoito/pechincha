@@ -1,10 +1,11 @@
 use clap::{Parser, Subcommand};
 use pechincha::{
-    config::PechinchaConfig, display, models::SearchQuery, providers::ProviderId,
+    config::PechinchaConfig, display, providers::ProviderId,
     search::SearchOrchestrator, SortOrder,
 };
 use tracing_subscriber::EnvFilter;
 
+// CLI flags are idiomatically bool in clap
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Parser)]
 #[command(
@@ -117,7 +118,6 @@ enum ConfigAction {
     Init,
 }
 
-#[allow(clippy::too_many_lines)]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
@@ -133,8 +133,7 @@ async fn main() -> anyhow::Result<()> {
         .with_target(false)
         .init();
 
-    let mut config = PechinchaConfig::load(cli.config.as_deref().map(std::path::Path::new))
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let mut config = load_config(&cli)?;
 
     // CLI --cdp-port overrides config; auto-detect if port 9222 is listening
     if let Some(port) = cli.cdp_port {
@@ -146,47 +145,8 @@ async fn main() -> anyhow::Result<()> {
     }
 
     match cli.command {
-        Some(Commands::Config { action }) => match action {
-            ConfigAction::Show => {
-                println!("{}", toml::to_string_pretty(&config)?);
-            }
-            ConfigAction::Init => {
-                let path = cli
-                    .config
-                    .as_deref()
-                    .map(std::path::Path::new)
-                    .map_or_else(pechincha::config::default_config_path, std::path::Path::to_path_buf);
-                config.save(Some(&path)).map_err(|e| anyhow::anyhow!(e))?;
-                println!("Config written to {}", path.display());
-            }
-        },
-        Some(Commands::Watch { action }) => match action {
-            WatchAction::Add { query, below, platforms } => {
-                let mut store = pechincha::watch::WatchStore::load();
-                let platforms: Vec<ProviderId> = platforms.iter()
-                    .filter_map(|s| s.parse().ok())
-                    .collect();
-                let price = rust_decimal::Decimal::try_from(below)
-                    .map_err(|_| anyhow::anyhow!("Invalid price"))?;
-                let watch = store.add(query, price, platforms);
-                println!("  Watch #{} created.", watch.id);
-            }
-            WatchAction::List => {
-                let store = pechincha::watch::WatchStore::load();
-                store.list();
-            }
-            WatchAction::Remove { id } => {
-                let mut store = pechincha::watch::WatchStore::load();
-                if store.remove(id) {
-                    println!("  Watch #{id} removed.");
-                } else {
-                    println!("  Watch #{id} not found.");
-                }
-            }
-            WatchAction::Run => {
-                pechincha::watch::check_all(&config).await;
-            }
-        },
+        Some(Commands::Config { ref action }) => handle_config_command(action, &cli, &config)?,
+        Some(Commands::Watch { action }) => handle_watch_command(action, &config).await?,
         Some(Commands::Providers) => {
             println!("Available providers:");
             for id in ProviderId::all() {
@@ -199,83 +159,150 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         None => {
-            let query_str = cli
-                .query
-                .ok_or_else(|| anyhow::anyhow!("Missing search query. Usage: pechincha \"product name\""))?;
-
-            let platforms: Vec<ProviderId> = cli
-                .platforms
-                .iter()
-                .filter_map(|s| s.parse().ok())
-                .collect();
-
-            let sort: SortOrder = cli.sort.parse().unwrap_or_default();
-
-            let min_price = cli
-                .min_price
-                .and_then(|p| rust_decimal::Decimal::try_from(p).ok());
-            let max_price = cli
-                .max_price
-                .and_then(|p| rust_decimal::Decimal::try_from(p).ok());
-
-            let query = SearchQuery {
-                query: query_str,
-                max_results: cli.limit,
-                min_price,
-                max_price,
-                condition: None,
-                sort,
-                platforms,
-            };
-
-            // Check cache first (unless --no-cache)
-            let cache = pechincha::cache::SearchCache::new(config.general.cache_ttl_minutes);
-            if !cli.no_cache {
-                if let Some(cached_products) = cache.get(&query) {
-                    eprintln!("  {} cached results", cached_products.len());
-                    let results = pechincha::models::SearchResults {
-                        products: cached_products,
-                        errors: vec![],
-                        query_time: std::time::Duration::from_millis(0),
-                    };
-                    if cli.csv {
-                        display::print_csv(&results);
-                    } else if cli.json {
-                        display::print_json(&results);
-                    } else {
-                        let no_changes: Vec<Option<pechincha::history::PriceChange>> =
-                            vec![None; results.products.len()];
-                        display::print_results(&results, &query.query, &no_changes);
-                    }
-                    return Ok(());
-                }
-            }
-
-            let orchestrator = SearchOrchestrator::from_config(&config);
-            let results = orchestrator.search(&query).await;
-
-            // Cache the results
-            if config.general.cache_ttl_minutes > 0 {
-                cache.put(&query, &results.products);
-            }
-
-            // Record price history and annotate with price changes
-            let tracker = pechincha::history::PriceTracker::new();
-            let price_changes: Vec<Option<pechincha::history::PriceChange>> = results.products.iter()
-                .map(|p| tracker.price_change(p))
-                .collect();
-            tracker.record_all(&results.products);
-
-            if cli.csv {
-                display::print_csv(&results);
-            } else if cli.json {
-                display::print_json(&results);
-            } else {
-                display::print_results(&results, &query.query, &price_changes);
-            }
+            run_search(&cli, &config).await?;
         }
     }
 
+    Ok(())
+}
+
+fn load_config(cli: &Cli) -> anyhow::Result<PechinchaConfig> {
+    PechinchaConfig::load(cli.config.as_deref().map(std::path::Path::new))
+        .map_err(|e| anyhow::anyhow!(e))
+}
+
+fn handle_config_command(action: &ConfigAction, cli: &Cli, config: &PechinchaConfig) -> anyhow::Result<()> {
+    match action {
+        ConfigAction::Show => {
+            println!("{}", toml::to_string_pretty(config)?);
+        }
+        ConfigAction::Init => {
+            let path = cli
+                .config
+                .as_deref()
+                .map(std::path::Path::new)
+                .map_or_else(pechincha::config::default_config_path, std::path::Path::to_path_buf);
+            config.save(Some(&path)).map_err(|e| anyhow::anyhow!(e))?;
+            println!("Config written to {}", path.display());
+        }
+    }
+    Ok(())
+}
+
+async fn handle_watch_command(action: WatchAction, config: &PechinchaConfig) -> anyhow::Result<()> {
+    match action {
+        WatchAction::Add { query, below, platforms } => {
+            let mut store = pechincha::watch::WatchStore::load();
+            let platforms: Vec<ProviderId> = platforms.iter()
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            let price = rust_decimal::Decimal::try_from(below)
+                .map_err(|_| anyhow::anyhow!("Invalid price"))?;
+            let watch = store.add(query, price, platforms);
+            println!("  Watch #{} created.", watch.id);
+        }
+        WatchAction::List => {
+            let store = pechincha::watch::WatchStore::load();
+            store.list();
+        }
+        WatchAction::Remove { id } => {
+            let mut store = pechincha::watch::WatchStore::load();
+            if store.remove(id) {
+                println!("  Watch #{id} removed.");
+            } else {
+                println!("  Watch #{id} not found.");
+            }
+        }
+        WatchAction::Run => {
+            pechincha::watch::check_all(config).await;
+        }
+    }
+    Ok(())
+}
+
+fn build_query(cli: &Cli) -> anyhow::Result<pechincha::models::SearchQuery> {
+    let query_str = cli
+        .query
+        .clone()
+        .ok_or_else(|| anyhow::anyhow!("Missing search query. Usage: pechincha \"product name\""))?;
+
+    let platforms: Vec<ProviderId> = cli
+        .platforms
+        .iter()
+        .filter_map(|s| s.parse().ok())
+        .collect();
+
+    let sort: SortOrder = cli.sort.parse().unwrap_or_default();
+
+    let min_price = cli
+        .min_price
+        .and_then(|p| rust_decimal::Decimal::try_from(p).ok());
+    let max_price = cli
+        .max_price
+        .and_then(|p| rust_decimal::Decimal::try_from(p).ok());
+
+    Ok(pechincha::models::SearchQuery {
+        query: query_str,
+        max_results: cli.limit,
+        min_price,
+        max_price,
+        condition: None,
+        sort,
+        platforms,
+    })
+}
+
+fn output_results(
+    cli: &Cli,
+    results: &pechincha::models::SearchResults,
+    query_text: &str,
+    price_changes: &[Option<pechincha::history::PriceChange>],
+) {
+    if cli.csv {
+        display::print_csv(results);
+    } else if cli.json {
+        display::print_json(results);
+    } else {
+        display::print_results(results, query_text, price_changes);
+    }
+}
+
+async fn run_search(cli: &Cli, config: &PechinchaConfig) -> anyhow::Result<()> {
+    let query = build_query(cli)?;
+
+    // Check cache first (unless --no-cache)
+    let cache = pechincha::cache::SearchCache::new(config.general.cache_ttl_minutes);
+    if !cli.no_cache {
+        if let Some(cached_products) = cache.get(&query) {
+            eprintln!("  {} cached results", cached_products.len());
+            let results = pechincha::models::SearchResults {
+                products: cached_products,
+                errors: vec![],
+                query_time: std::time::Duration::from_millis(0),
+            };
+            let no_changes: Vec<Option<pechincha::history::PriceChange>> =
+                vec![None; results.products.len()];
+            output_results(cli, &results, &query.query, &no_changes);
+            return Ok(());
+        }
+    }
+
+    let orchestrator = SearchOrchestrator::from_config(config);
+    let results = orchestrator.search(&query).await;
+
+    // Cache the results
+    if config.general.cache_ttl_minutes > 0 {
+        cache.put(&query, &results.products);
+    }
+
+    // Record price history and annotate with price changes
+    let tracker = pechincha::history::PriceTracker::new();
+    let price_changes: Vec<Option<pechincha::history::PriceChange>> = results.products.iter()
+        .map(|p| tracker.price_change(p))
+        .collect();
+    tracker.record_all(&results.products);
+
+    output_results(cli, &results, &query.query, &price_changes);
     Ok(())
 }
 

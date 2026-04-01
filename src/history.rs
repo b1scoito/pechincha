@@ -47,12 +47,12 @@ impl PriceTracker {
         Self::default()
     }
 
-    #[allow(clippy::items_after_statements)]
     fn product_key(product: &Product) -> String {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
         // Key by provider + platform_id (most unique), fallback to title hash
         if product.platform_id.is_empty() {
-            use std::collections::hash_map::DefaultHasher;
-            use std::hash::{Hash, Hasher};
             let mut hasher = DefaultHasher::new();
             product.provider.to_string().hash(&mut hasher);
             product.title.to_lowercase().hash(&mut hasher);
@@ -67,8 +67,9 @@ impl PriceTracker {
     }
 
     /// Record current price for a product.
-    #[allow(clippy::items_after_statements)]
     pub fn record(&self, product: &Product) {
+        use std::io::Write;
+
         if product.price.total_cost == Decimal::ZERO {
             return;
         }
@@ -91,7 +92,6 @@ impl PriceTracker {
         };
 
         // Append to JSONL file
-        use std::io::Write;
         if let Ok(mut file) = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -125,7 +125,6 @@ impl PriceTracker {
 
     /// Compute price change for a product relative to its last known price.
     #[must_use]
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub fn price_change(&self, product: &Product) -> Option<PriceChange> {
         let previous_entry = self.get_previous(product)?;
         let previous = previous_entry.total_cost;
@@ -136,7 +135,7 @@ impl PriceTracker {
         }
 
         let pct_change = ((current - previous) * Decimal::from(100)) / previous;
-        let days_ago = (Utc::now() - previous_entry.timestamp).num_days().max(1) as u32;
+        let days_ago = u32::try_from((Utc::now() - previous_entry.timestamp).num_days().max(1)).unwrap_or(0);
 
         Some(PriceChange {
             previous,

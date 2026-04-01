@@ -22,7 +22,12 @@ pub use providers::{Provider, ProviderId};
 pub use search::SearchOrchestrator;
 
 /// Convenience function: one-shot search with default config.
-#[allow(clippy::missing_errors_doc)]
+///
+/// # Errors
+///
+/// Returns [`PechinchaError::Config`] if the default config file cannot be loaded,
+/// or [`PechinchaError::AllProvidersFailed`] if every provider returned an error
+/// and no products were found.
 pub async fn search(query: &str) -> Result<SearchResults, PechinchaError> {
     let config = PechinchaConfig::load(None).map_err(PechinchaError::Config)?;
     let orchestrator = SearchOrchestrator::from_config(&config);

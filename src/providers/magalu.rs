@@ -29,9 +29,8 @@ impl MagazineLuiza {
 }
 
 #[async_trait]
-#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for MagazineLuiza {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Magazine Luiza"
     }
 
@@ -72,13 +71,12 @@ impl Provider for MagazineLuiza {
     }
 }
 
-#[allow(clippy::too_many_lines)]
 fn parse_next_data(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
     let Some(start) = html.find(marker) else {
         // Fallback: try HTML scraping when __NEXT_DATA__ is absent
         debug!("Magalu __NEXT_DATA__ not found, trying HTML fallback");
-        return parse_magalu_html(html, max_results);
+        return Ok(parse_magalu_html(html, max_results));
     };
     let json_start = start + marker.len();
     let json_end = html[json_start..]
@@ -96,128 +94,136 @@ fn parse_next_data(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
     let mut products = Vec::new();
 
     for item in items.iter().take(50) {
-        if item["available"].as_bool() == Some(false) {
-            continue;
+        if let Some(product) = parse_magalu_item(item) {
+            products.push(product);
         }
-
-        let title = item["title"].as_str().unwrap_or_default().to_string();
-        if title.is_empty() {
-            continue;
-        }
-
-        // bestPrice is the actual price (with discounts), fullPrice is without discount
-        let price = item["price"]["bestPrice"]
-            .as_str()
-            .and_then(|s| s.parse::<Decimal>().ok())
-            .or_else(|| {
-                item["price"]["fullPrice"]
-                    .as_str()
-                    .and_then(|s| s.parse::<Decimal>().ok())
-            })
-            .unwrap_or(Decimal::ZERO);
-
-        if price == Decimal::ZERO {
-            continue;
-        }
-
-        let original_price = item["price"]["fullPrice"]
-            .as_str()
-            .and_then(|s| s.parse::<Decimal>().ok());
-
-        let product_id = item["id"].as_str().unwrap_or("").to_string();
-
-        // Build URL from product slug
-        let product_url = item["url"]
-            .as_str()
-            .map_or_else(
-                || {
-                    let slug = title
-                        .to_lowercase()
-                        .chars()
-                        .map(|c| if c.is_alphanumeric() { c } else { '-' })
-                        .collect::<String>();
-                    format!(
-                        "https://www.magazineluiza.com.br/{slug}/s/p/{product_id}/",
-                    )
-                },
-                |u| {
-                    if u.starts_with('/') {
-                        format!("https://www.magazineluiza.com.br{u}")
-                    } else {
-                        u.to_string()
-                    }
-                },
-            );
-
-        // Image URL has {w}x{h} placeholder
-        let image = item["image"]
-            .as_str()
-            .map(|s| s.replace("{w}x{h}", "300x300"));
-
-        #[allow(clippy::cast_possible_truncation)]
-        let rating = item["rating"]["score"]
-            .as_f64()
-            .map(|r| r as f32)
-            .filter(|r| *r > 0.0);
-
-        #[allow(clippy::cast_possible_truncation)]
-        let review_count = item["rating"]["count"]
-            .as_u64()
-            .map(|n| n as u32);
-
-        let seller_name = item["seller"]["description"]
-            .as_str()
-            .unwrap_or("Magazine Luiza")
-            .to_string();
-
-        let installments = parse_installment(&item["installment"]);
-
-        products.push(Product {
-            provider: ProviderId::MagazineLuiza,
-            platform_id: product_id,
-            title,
-            normalized_title: None,
-            url: product_url,
-            image_url: image,
-            price: PriceInfo {
-                listed_price: price,
-                currency: Currency::BRL,
-                price_brl: price,
-                shipping_cost: None,
-                tax: TaxInfo {
-                    remessa_conforme: false,
-                    taxes_included: true,
-                    import_tax: None,
-                    icms: None,
-                    total_tax: Decimal::ZERO,
-                    tax_regime: TaxRegime::Domestic,
-                },
-                total_cost: price,
-                original_price,
-                installments,
-            },
-            seller: Some(SellerInfo {
-                name: seller_name,
-                reputation: None,
-                official_store: item["seller"]["category"].as_str() == Some("1p"),
-            }),
-            condition: ProductCondition::New,
-            rating,
-            review_count,
-            sold_count: None,
-            domestic: true,
-            fetched_at: Utc::now(),
-            keepa: Vec::new(),
-        });
     }
 
     Ok(products)
 }
 
+fn parse_magalu_item(item: &serde_json::Value) -> Option<Product> {
+    if item["available"].as_bool() == Some(false) {
+        return None;
+    }
+
+    let title = item["title"].as_str().unwrap_or_default().to_string();
+    if title.is_empty() {
+        return None;
+    }
+
+    // bestPrice is the actual price (with discounts), fullPrice is without discount
+    let price = item["price"]["bestPrice"]
+        .as_str()
+        .and_then(|s| s.parse::<Decimal>().ok())
+        .or_else(|| {
+            item["price"]["fullPrice"]
+                .as_str()
+                .and_then(|s| s.parse::<Decimal>().ok())
+        })
+        .unwrap_or(Decimal::ZERO);
+
+    if price == Decimal::ZERO {
+        return None;
+    }
+
+    let original_price = item["price"]["fullPrice"]
+        .as_str()
+        .and_then(|s| s.parse::<Decimal>().ok());
+
+    let product_id = item["id"].as_str().unwrap_or("").to_string();
+
+    let product_url = build_magalu_url(item, &title, &product_id);
+    let image = item["image"]
+        .as_str()
+        .map(|s| s.replace("{w}x{h}", "300x300"));
+
+    // Rating scores are 0.0–5.0, no precision loss narrowing to f32
+    #[allow(clippy::cast_possible_truncation)]
+    let rating = item["rating"]["score"]
+        .as_f64()
+        .and_then(|r| {
+            let score = r as f32;
+            if score > 0.0 { Some(score) } else { None }
+        });
+
+    let review_count = item["rating"]["count"]
+        .as_u64()
+        .and_then(|n| u32::try_from(n).ok());
+
+    let seller_name = item["seller"]["description"]
+        .as_str()
+        .unwrap_or("Magazine Luiza")
+        .to_string();
+
+    let installments = parse_installment(&item["installment"]);
+
+    Some(Product {
+        provider: ProviderId::MagazineLuiza,
+        platform_id: product_id,
+        title,
+        normalized_title: None,
+        url: product_url,
+        image_url: image,
+        price: PriceInfo {
+            listed_price: price,
+            currency: Currency::BRL,
+            price_brl: price,
+            shipping_cost: None,
+            tax: TaxInfo {
+                remessa_conforme: false,
+                taxes_included: true,
+                import_tax: None,
+                icms: None,
+                total_tax: Decimal::ZERO,
+                tax_regime: TaxRegime::Domestic,
+            },
+            total_cost: price,
+            original_price,
+            installments,
+        },
+        seller: Some(SellerInfo {
+            name: seller_name,
+            reputation: None,
+            official_store: item["seller"]["category"].as_str() == Some("1p"),
+        }),
+        condition: ProductCondition::New,
+        rating,
+        review_count,
+        sold_count: None,
+        domestic: true,
+        fetched_at: Utc::now(),
+        keepa: Vec::new(),
+    })
+}
+
+fn build_magalu_url(item: &serde_json::Value, title: &str, product_id: &str) -> String {
+    item["url"]
+        .as_str()
+        .map_or_else(
+            || {
+                let slug = title
+                    .to_lowercase()
+                    .chars()
+                    .map(|c| if c.is_alphanumeric() { c } else { '-' })
+                    .collect::<String>();
+                format!(
+                    "https://www.magazineluiza.com.br/{slug}/s/p/{product_id}/",
+                )
+            },
+            |u| {
+                if u.starts_with('/') {
+                    format!("https://www.magazineluiza.com.br{u}")
+                } else {
+                    u.to_string()
+                }
+            },
+        )
+}
+
 /// Fallback HTML parser for Magalu when `__NEXT_DATA__` is not available.
 /// Extracts products from rendered HTML using product card patterns.
-#[allow(clippy::unnecessary_wraps)]
-fn parse_magalu_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+fn parse_magalu_html(html: &str, max_results: usize) -> Vec<Product> {
     let document = scraper::Html::parse_document(html);
     let mut products = Vec::new();
 
@@ -311,12 +317,11 @@ fn parse_magalu_html(html: &str, max_results: usize) -> Result<Vec<Product>, Pro
     }
 
     info!(results = products.len(), "Magalu HTML fallback parsed");
-    Ok(products)
+    products
 }
 
-#[allow(clippy::cast_possible_truncation)]
 fn parse_installment(v: &serde_json::Value) -> Option<InstallmentInfo> {
-    let count = v["quantity"].as_u64()? as u8;
+    let count = u8::try_from(v["quantity"].as_u64()?).unwrap_or_default();
     let amount: Decimal = v["amount"].as_str()?.parse().ok()?;
     let interest: Decimal = v["interest"].as_str()?.parse().ok()?;
 

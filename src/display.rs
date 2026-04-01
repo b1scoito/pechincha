@@ -10,6 +10,16 @@ use crate::providers::ProviderId;
 
 const DIM_LINE: &str = "─";
 
+/// Contextual data needed to display a product row, beyond the product itself.
+struct DisplayContext<'a> {
+    exchange_rate: Decimal,
+    msrp_usd: Option<Decimal>,
+    msrp_is_domestic: bool,
+    msrp_brl: Option<Decimal>,
+    median_price: Option<Decimal>,
+    price_change: Option<&'a PriceChange>,
+}
+
 pub fn print_results(results: &SearchResults, query: &str, price_changes: &[Option<PriceChange>]) {
     if results.products.is_empty() {
         eprintln!("{}", "  No results found.".yellow());
@@ -17,9 +27,58 @@ pub fn print_results(results: &SearchResults, query: &str, price_changes: &[Opti
         return;
     }
 
-    let provider_count = count_unique_providers(&results.products);
+    print_header(results, query);
 
-    // Header
+    let best_price = results.products.iter().map(|p| p.price.total_cost).min();
+    let median_price = compute_median(&results.products);
+    let (reference_msrp_usd, msrp_is_domestic, msrp_brl_raw) = find_reference_msrp(&results.products);
+
+    // Exchange rate for MSRP comparison
+    let exchange_rate = results.products.iter()
+        .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
+        .map_or_else(|| Decimal::from(5), |p| p.price.price_brl / p.price.listed_price);
+
+    // Results list
+    for (i, product) in results.products.iter().enumerate() {
+        let is_best = best_price == Some(product.price.total_cost) && i == 0;
+        let price_change = price_changes.get(i).and_then(|c| c.as_ref());
+        let ctx = DisplayContext {
+            exchange_rate,
+            msrp_usd: reference_msrp_usd,
+            msrp_is_domestic,
+            msrp_brl: msrp_brl_raw,
+            median_price,
+            price_change,
+        };
+        print_product_row(i + 1, product, is_best, &ctx);
+    }
+
+    // Keepa international prices
+    print_keepa_section(results);
+
+    // MSRP reference
+    if let Some(msrp) = reference_msrp_usd {
+        if msrp_is_domestic {
+            if let Some(brl) = msrp_brl_raw {
+                println!("  {} {}", "MSRP".dimmed(), format_brl(brl).bold());
+            }
+        } else {
+            print_msrp_reference(msrp, exchange_rate);
+        }
+    }
+
+    // Links
+    print_product_links(results);
+
+    // Errors
+    print_errors(results);
+
+    println!();
+}
+
+/// Print the search results header (query name, count, timing).
+fn print_header(results: &SearchResults, query: &str) {
+    let provider_count = count_unique_providers(&results.products);
     println!();
     println!(
         "  {} {} {}",
@@ -37,28 +96,28 @@ pub fn print_results(results: &SearchResults, query: &str, price_changes: &[Opti
         ).dimmed()
     );
     println!();
+}
 
-    // Find best price for highlighting
-    let best_price = results.products.iter().map(|p| p.price.total_cost).min();
+/// Compute the median total cost across all products.
+fn compute_median(products: &[Product]) -> Option<Decimal> {
+    let mut prices: Vec<Decimal> = products.iter().map(|p| p.price.total_cost).collect();
+    prices.sort();
+    if prices.is_empty() {
+        None
+    } else if prices.len() % 2 == 1 {
+        Some(prices[prices.len() / 2])
+    } else {
+        let mid = prices.len() / 2;
+        Some((prices[mid - 1] + prices[mid]) / Decimal::from(2))
+    }
+}
 
-    // Compute median price for relative comparison
-    let median_price = {
-        let mut prices: Vec<Decimal> = results.products.iter().map(|p| p.price.total_cost).collect();
-        prices.sort();
-        if prices.is_empty() {
-            None
-        } else if prices.len() % 2 == 1 {
-            Some(prices[prices.len() / 2])
-        } else {
-            let mid = prices.len() / 2;
-            Some((prices[mid - 1] + prices[mid]) / Decimal::from(2))
-        }
-    };
+/// Find reference MSRP from Keepa data or product original prices.
+/// Returns (`msrp_usd`, `is_domestic`, `msrp_brl_raw`).
+fn find_reference_msrp(products: &[Product]) -> (Option<Decimal>, bool, Option<Decimal>) {
+    let mut is_domestic = false;
 
-    // Find reference MSRP from Keepa (any domain) or product data.
-    // Track whether it's domestic (BRL) or international (USD).
-    let mut msrp_is_domestic = false;
-    let reference_msrp_usd: Option<Decimal> = results.products.iter()
+    let msrp_usd: Option<Decimal> = products.iter()
         .find_map(|p| {
             p.keepa.iter()
                 .find(|k| k.domain == crate::keepa::DOMAIN_US)
@@ -66,21 +125,21 @@ pub fn print_results(results: &SearchResults, query: &str, price_changes: &[Opti
         })
         .or_else(|| {
             // Fallback: BR MSRP converted to USD
-            results.products.iter().find_map(|p| {
+            products.iter().find_map(|p| {
                 p.keepa.iter()
                     .find(|k| k.domain == crate::keepa::DOMAIN_BR)
                     .and_then(KeepaInsight::msrp)
-                    .map(|brl| { msrp_is_domestic = true; brl * k_br_to_usd() })
+                    .map(|brl| { is_domestic = true; brl * k_br_to_usd() })
             })
         })
         .or_else(|| {
-            results.products.iter()
+            products.iter()
                 .find(|p| p.price.original_price.is_some() && p.price.currency == Currency::USD)
                 .and_then(|p| p.price.original_price)
         });
-    // Also get the raw BRL MSRP for domestic display
-    let msrp_brl_raw: Option<Decimal> = if msrp_is_domestic {
-        results.products.iter().find_map(|p| {
+
+    let msrp_brl = if is_domestic {
+        products.iter().find_map(|p| {
             p.keepa.iter()
                 .find(|k| k.domain == crate::keepa::DOMAIN_BR)
                 .and_then(KeepaInsight::msrp)
@@ -89,34 +148,11 @@ pub fn print_results(results: &SearchResults, query: &str, price_changes: &[Opti
         None
     };
 
-    // Exchange rate for MSRP comparison
-    let exchange_rate = results.products.iter()
-        .find(|p| p.price.currency == Currency::USD && p.price.listed_price > Decimal::ZERO)
-        .map_or_else(|| Decimal::from(5), |p| p.price.price_brl / p.price.listed_price);
+    (msrp_usd, is_domestic, msrp_brl)
+}
 
-    // Results list
-    for (i, product) in results.products.iter().enumerate() {
-        let is_best = best_price == Some(product.price.total_cost) && i == 0;
-        let price_change = price_changes.get(i).and_then(|c| c.as_ref());
-        print_product_row(i + 1, product, is_best, reference_msrp_usd, exchange_rate, msrp_is_domestic, msrp_brl_raw, median_price, price_change);
-    }
-
-    // Keepa international prices
-    print_keepa_section(results);
-
-    // MSRP reference
-    if let Some(msrp) = reference_msrp_usd {
-        if msrp_is_domestic {
-            // Domestic MSRP — just show the BRL price, no import calculation
-            if let Some(brl) = msrp_brl_raw {
-                println!("  {} {}", "MSRP".dimmed(), format_brl(brl).bold());
-            }
-        } else {
-            print_msrp_reference(msrp, exchange_rate);
-        }
-    }
-
-    // Links — full URLs for clicking
+/// Print product URL links.
+fn print_product_links(results: &SearchResults) {
     println!();
     for (i, product) in results.products.iter().enumerate() {
         if !product.url.is_empty() {
@@ -127,65 +163,15 @@ pub fn print_results(results: &SearchResults, query: &str, price_changes: &[Opti
             );
         }
     }
-
-    // Errors
-    print_errors(results);
-
-    println!();
 }
 
-#[allow(clippy::too_many_arguments, clippy::too_many_lines)]
 fn print_product_row(
     rank: usize,
     product: &Product,
     is_best: bool,
-    msrp_usd: Option<Decimal>,
-    exchange_rate: Decimal,
-    msrp_is_domestic: bool,
-    msrp_brl_raw: Option<Decimal>,
-    median_price: Option<Decimal>,
-    price_change: Option<&PriceChange>,
+    ctx: &DisplayContext<'_>,
 ) {
     let total = format_brl(product.price.total_cost);
-
-    // Platform tag
-    let platform = format_provider(product.provider);
-    let origin = if product.domestic { "domestic" } else { "import" };
-
-    // Rating
-    let rating_str = product.rating
-        .map(|r| {
-            product.review_count.map_or_else(
-                || format!("{r:.1}"),
-                |rc| format!("{r:.1} ({})", format_count(rc)),
-            )
-        })
-        .unwrap_or_default();
-
-    // Savings vs MSRP.
-    // MSRP is MSRP — the manufacturer's suggested retail price.
-    // Compare the product's BRL price against MSRP converted to BRL.
-    // Ship+tax is a separate concern, not mixed into this comparison.
-    let savings = if msrp_is_domestic {
-        msrp_brl_raw.and_then(|reference| {
-            if reference > Decimal::ZERO {
-                let pct = ((product.price.price_brl - reference) * Decimal::from(100)) / reference;
-                Some(pct)
-            } else {
-                None
-            }
-        })
-    } else {
-        msrp_usd.and_then(|msrp| {
-            let msrp_brl = msrp * exchange_rate;
-            if msrp_brl > Decimal::ZERO {
-                let pct = ((product.price.price_brl - msrp_brl) * Decimal::from(100)) / msrp_brl;
-                Some(pct)
-            } else {
-                None
-            }
-        })
-    };
 
     // First line: rank, price, title
     let rank_str = format!("{rank:>2}");
@@ -207,13 +193,47 @@ fn print_product_row(
         );
     }
 
-    // Second line: metadata (platform, origin, rating, savings)
+    // Second line: metadata
+    let meta = build_meta_line(product, ctx);
+
+    // Price breakdown for imports
+    let breakdown = format_price_breakdown(product, ctx.exchange_rate);
+
+    if breakdown.is_empty() {
+        println!("      {:<13}  {}", "", meta.dimmed());
+    } else {
+        println!(
+            "      {:<13}  {}",
+            breakdown.dimmed(),
+            meta.dimmed()
+        );
+    }
+
+    println!(); // Spacing between results
+}
+
+/// Build the metadata line: platform, origin, rating, MSRP savings, price history, median.
+fn build_meta_line(product: &Product, ctx: &DisplayContext<'_>) -> String {
+    let platform = format_provider(product.provider);
+    let origin = if product.domestic { "domestic" } else { "import" };
+
     let mut meta_parts: Vec<String> = vec![platform, origin.to_string()];
 
+    // Rating
+    let rating_str = product.rating
+        .map(|r| {
+            product.review_count.map_or_else(
+                || format!("{r:.1}"),
+                |rc| format!("{r:.1} ({})", format_count(rc)),
+            )
+        })
+        .unwrap_or_default();
     if !rating_str.is_empty() {
         meta_parts.push(format!("{rating_str}★"));
     }
 
+    // Savings vs MSRP
+    let savings = compute_msrp_savings(product, ctx);
     if let Some(pct) = savings {
         if pct < Decimal::ZERO {
             meta_parts.push(format!("{pct:.0}% vs MSRP").green().to_string());
@@ -223,7 +243,7 @@ fn print_product_row(
     }
 
     // Price history change
-    if let Some(change) = price_change {
+    if let Some(change) = ctx.price_change {
         if change.pct_change < -3.0 {
             meta_parts.push(
                 format!("↓{:.0}% {}d ago", change.pct_change.abs(), change.days_ago)
@@ -238,7 +258,7 @@ fn print_product_row(
     }
 
     // Median price comparison
-    if let Some(median) = median_price {
+    if let Some(median) = ctx.median_price {
         if median > Decimal::ZERO {
             let pct = ((product.price.total_cost - median) * Decimal::from(100)) / median;
             let threshold = Decimal::from(3);
@@ -250,13 +270,36 @@ fn print_product_row(
         }
     }
 
-    let meta = meta_parts.join(&format!(" {} ", "·".dimmed()));
+    meta_parts.join(&format!(" {} ", "·".dimmed()))
+}
 
-    // Price breakdown for imports
-    let breakdown = if !product.domestic && product.price.currency == Currency::USD {
+/// Compute percentage savings vs MSRP. Negative = cheaper than MSRP.
+fn compute_msrp_savings(product: &Product, ctx: &DisplayContext<'_>) -> Option<Decimal> {
+    if ctx.msrp_is_domestic {
+        ctx.msrp_brl.and_then(|reference| {
+            if reference > Decimal::ZERO {
+                Some(((product.price.price_brl - reference) * Decimal::from(100)) / reference)
+            } else {
+                None
+            }
+        })
+    } else {
+        ctx.msrp_usd.and_then(|msrp| {
+            let msrp_brl = msrp * ctx.exchange_rate;
+            if msrp_brl > Decimal::ZERO {
+                Some(((product.price.price_brl - msrp_brl) * Decimal::from(100)) / msrp_brl)
+            } else {
+                None
+            }
+        })
+    }
+}
+
+/// Format the USD price breakdown line for import products.
+fn format_price_breakdown(product: &Product, exchange_rate: Decimal) -> String {
+    if !product.domestic && product.price.currency == Currency::USD {
         let ship_tax = product.price.shipping_cost.unwrap_or(Decimal::ZERO) + product.price.tax.total_tax;
         if ship_tax > Decimal::ZERO {
-            // Convert back to USD for display
             let ship_tax_usd = ship_tax / exchange_rate;
             format!(
                 "US${:.0} + US${:.0} ship+tax",
@@ -267,19 +310,7 @@ fn print_product_row(
         }
     } else {
         String::new()
-    };
-
-    if breakdown.is_empty() {
-        println!("      {:<13}  {}", "", meta.dimmed());
-    } else {
-        println!(
-            "      {:<13}  {}",
-            breakdown.dimmed(),
-            meta.dimmed()
-        );
     }
-
-    println!(); // Spacing between results
 }
 
 // ── Keepa Section ───────────────────────────────────────────────────────────
@@ -417,7 +448,12 @@ fn print_msrp_reference(msrp: Decimal, exchange_rate: Decimal) {
 
 // ── JSON & CSV Output ───────────────────────────────────────────────────────
 
-#[allow(clippy::missing_panics_doc)]
+/// Print search results as pretty-printed JSON to stdout.
+///
+/// # Panics
+///
+/// Panics if `serde_json::to_string_pretty` fails to serialize the output
+/// JSON object, which should not happen with valid `SearchResults` data.
 pub fn print_json(results: &SearchResults) {
     let output = serde_json::json!({
         "products": results.products,
