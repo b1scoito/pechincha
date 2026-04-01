@@ -827,12 +827,60 @@ impl SearchOrchestrator {
                 *count <= max
             });
         }
+
+        // Strip tracking parameters from URLs for clean output
+        for product in &mut *products {
+            product.url = clean_url(&product.url);
+        }
     }
 
 }
 
-// Old is_relevant, title_match_score, is_accessory_title removed.
-// All relevance logic now lives in src/scoring.rs using signal-based scoring.
+/// Strip tracking parameters and fragments from product URLs.
+///
+/// Similar to ClearURLs — removes referral tags, session IDs, tracking pixels,
+/// and other noise to produce clean, shareable links.
+fn clean_url(url: &str) -> String {
+    // Amazon: keep only the /dp/ASIN path
+    if url.contains("amazon.com") {
+        if let Some(dp_pos) = url.find("/dp/") {
+            let asin_start = dp_pos + 4;
+            let asin_end = url[asin_start..]
+                .find(|c: char| c == '/' || c == '?' || c == '#')
+                .map_or(url.len(), |i| asin_start + i);
+            let asin = &url[asin_start..asin_end];
+            if asin.len() == 10 {
+                // Preserve the slug before /dp/ for readable URLs
+                let base = &url[..dp_pos];
+                return format!("{base}/dp/{asin}");
+            }
+        }
+    }
+
+    // eBay: keep only /itm/ID
+    if url.contains("ebay.com") {
+        if let Some(itm_pos) = url.find("/itm/") {
+            let id_start = itm_pos + 5;
+            let id_end = url[id_start..]
+                .find(|c: char| c == '?' || c == '#' || c == '&')
+                .map_or(url.len(), |i| id_start + i);
+            return url[..id_end].to_string();
+        }
+    }
+
+    // AliExpress: keep only /item/ID.html
+    if url.contains("aliexpress.com") {
+        if let Some(item_pos) = url.find("/item/") {
+            if let Some(html_end) = url[item_pos..].find(".html") {
+                return url[..item_pos + html_end + 5].to_string();
+            }
+        }
+    }
+
+    // For all other URLs: strip query string and fragment
+    let end = url.find(['?', '#']).unwrap_or(url.len());
+    url[..end].to_string()
+}
 
 /// Deduplicate products: remove near-identical listings from the same platform.
 /// Products are considered duplicates when:
@@ -1002,5 +1050,70 @@ impl SearchOrchestrator {
         }
 
         (all_products, errors)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn clean_url_amazon() {
+        let dirty = "https://www.amazon.com/DREAME-Emptying-Flexible-Washboard-Selection/dp/B0F32THV6T/ref=sr_1_2?dib=eyJ2IjoiMSJ9&keywords=Dreame+L40&qid=1775075016&sr=8-2#customerReviews";
+        assert_eq!(
+            clean_url(dirty),
+            "https://www.amazon.com/DREAME-Emptying-Flexible-Washboard-Selection/dp/B0F32THV6T"
+        );
+    }
+
+    #[test]
+    fn clean_url_amazon_br() {
+        let dirty = "https://www.amazon.com.br/DREAME-autolimpeza/dp/B0DYSPPN6J/ref=sr_1_13?dib=eyJ2&keywords=Dreame&sr=8-13&ufe=app_do#customerReviews";
+        assert_eq!(
+            clean_url(dirty),
+            "https://www.amazon.com.br/DREAME-autolimpeza/dp/B0DYSPPN6J"
+        );
+    }
+
+    #[test]
+    fn clean_url_mercadolivre() {
+        let dirty = "https://www.mercadolivre.com.br/dreame-l40s-ultra-ae/p/MLB2078066240#polycard_client=search-desktop&search_layout=grid&position=6&tracking_id=abc123";
+        assert_eq!(
+            clean_url(dirty),
+            "https://www.mercadolivre.com.br/dreame-l40s-ultra-ae/p/MLB2078066240"
+        );
+    }
+
+    #[test]
+    fn clean_url_ebay() {
+        let dirty = "https://www.ebay.com/itm/168151678757?_skw=Dreame+L50&itmmeta=01KN&hash=item27269eff25:g:abc&itmprp=enc%3Afoo";
+        assert_eq!(
+            clean_url(dirty),
+            "https://www.ebay.com/itm/168151678757"
+        );
+    }
+
+    #[test]
+    fn clean_url_aliexpress() {
+        let dirty = "https://pt.aliexpress.com/item/1005010636378474.html?spm=a2g0o.search&algo_pvid=abc123";
+        assert_eq!(
+            clean_url(dirty),
+            "https://pt.aliexpress.com/item/1005010636378474.html"
+        );
+    }
+
+    #[test]
+    fn clean_url_olx() {
+        let dirty = "https://rn.olx.com.br/audio/fone-sennheiser-hd-600-1487842582?tracking=abc";
+        assert_eq!(
+            clean_url(dirty),
+            "https://rn.olx.com.br/audio/fone-sennheiser-hd-600-1487842582"
+        );
+    }
+
+    #[test]
+    fn clean_url_already_clean() {
+        let clean = "https://www.kabum.com.br/produto/580481/camera-mirrorless-sony-a6700";
+        assert_eq!(clean_url(clean), clean);
     }
 }
