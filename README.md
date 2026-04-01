@@ -1,24 +1,43 @@
 # Pechincha
 
-Brazilian e-commerce price comparison CLI. Searches 8 platforms simultaneously, calculates import taxes, and shows the real total cost of buying domestically vs importing.
+Brazilian e-commerce price comparison CLI. Searches 10 platforms simultaneously, calculates import taxes, and shows the real total cost of buying domestically vs importing.
 
 ## What it does
 
 ```
-$ pechincha "Dyson V15 Detect"
+$ pechincha "Dreame L50 Ultra"
 
-╭───┬───────────┬──────────────────────────────┬────────────┬────────────┬────────────┬─────┬───────────┬─────────╮
-│ # ┆ Platform  ┆ Product                      ┆ Price      ┆ Ship+Tax   ┆ Total      ┆ ★   ┆ MSRP      ┆ Savings │
-╞═══╪═══════════╪══════════════════════════════╪════════════╪════════════╪════════════╪═════╪═══════════╪═════════╡
-│ 1 ┆ Amz US 🌎 ┆ Dyson V15 Detect Plus Cord.. ┆ R$ 2,085   ┆ R$ 2,697   ┆ R$ 4,782   ┆ 4.3 ┆ US$849.99 ┆ -44%    │
-│ 2 ┆ ML        ┆ Aspirador Dyson V15 Detect.. ┆ R$ 4,907   ┆ Free       ┆ R$ 4,907   ┆ —   ┆           ┆         │
-│ 3 ┆ ML 🌎     ┆ Aspirador Dyson V15 Detect.. ┆ R$ 5,311   ┆ R$ 4,799   ┆ R$ 10,110  ┆ —   ┆           ┆ +17%    │
-╰───┴───────────┴──────────────────────────────┴────────────┴────────────┴────────────┴─────┴───────────┴─────────╯
+  pechincha · Dreame L50 Ultra
+  8 results · 4 providers · 45.0s
 
-MSRP: US$849.99 = R$ 4,487 + R$ 4,163 tax = R$ 8,651 imported
+   1  R$ 4.333,46    DREAME L50 ULTRA ROBO ESFREGAO A VACUO BRANCO, 19.500P...
+                     eBay · import · -40% vs MSRP · -56% vs median
+
+   2  R$ 4.398,16    Esfregao a vacuo Dreame L50 ultra robo 19500Pa succao ...
+                     eBay · import · -39% vs MSRP · -55% vs median
+
+   3  R$ 9.450,63    DREAME L50 Ultra Robot Vacuum and Mop Black with Auto-...
+      US$949 + US$881 ship+tax  Amazon US · import · 4.2* · -32% vs MSRP
+
+   4  R$ 10.417,60   DREAME Aspirador de po L50 Ultra Robot e Mop Black com...
+                     Amazon BR · domestic · 4.3* · +44% vs MSRP
+
+   5  R$ 13.288,66   Aspirador Dreame L50 Ultra Robot 19500pa Com Succao
+                     ML · import · -3% vs MSRP
+
+  International Amazon Prices
+  ASIN B0F3J6BC4P via Keepa
+
+  -> Amazon.com.mx        MX$17418 (~US$853)
+     Amazon.ca            CA$1299 (~US$935) -> Warehouse US$712
+     Amazon.com           US$1399.99        -> Warehouse US$752
+
+  Import cost at MSRP
+  MSRP  US$1399.99  ->  R$ 7.224,78 (USD/BRL 5.16)
+  Import tax  R$ 4.334,87 (60%)
+  ICMS  R$ 2.367,64 (17% por dentro)
+  Total  R$ 13.927,30
 ```
-
-The Dyson V15 costs R$4,782 from Amazon US (including shipping and import duties) vs R$10,110 from Mercado Livre international. That's 53% cheaper.
 
 ## Providers
 
@@ -26,22 +45,34 @@ The Dyson V15 costs R$4,782 from Amazon US (including shipping and import duties
 |----------|--------|------|
 | Mercado Livre | HTML scraping | Price, shipping, international detection |
 | Amazon BR | HTML scraping (wreq TLS impersonation) | Price, rating, ASIN |
-| Amazon US | HTML + detail page + Keepa | Price, real shipping/import charges, MSRP, all-time low |
+| Amazon US | HTML + detail page + Keepa | Price, real shipping/import charges, MSRP |
 | Magazine Luiza | `__NEXT_DATA__` JSON | Price, rating, installments, seller |
 | Kabum | `__NEXT_DATA__` JSON | Price, installments, manufacturer |
 | Shopee | CDP via real browser | Price, seller, sold count |
-| AliExpress | CDP via real browser | Price, title, images |
+| AliExpress | CDP via real browser | Price, tax extraction from detail pages |
 | OLX | `__NEXT_DATA__` JSON | Price, seller, condition (used/new) |
+| Google Shopping | CDP + HTML fallback | Price, store name |
+| eBay | CDP + HTML scraping | Price, shipping, condition, import detection |
 
 ## How it works
 
 Pechincha uses two strategies depending on the site:
 
-**wreq (TLS fingerprint impersonation)** — For sites that serve HTML without heavy anti-bot (Mercado Livre, Amazon BR, Kabum, Magazine Luiza, OLX). The `wreq` HTTP client impersonates real browser TLS/JA3/HTTP2 fingerprints to bypass Cloudflare and ShieldSquare.
+**wreq (TLS fingerprint impersonation)** -- For sites that serve HTML without heavy anti-bot (Mercado Livre, Amazon BR, Kabum, Magazine Luiza, OLX). The `wreq` HTTP client impersonates real browser TLS/JA3/HTTP2 fingerprints.
 
-**CDP (Chrome DevTools Protocol)** — For sites with aggressive anti-bot (Shopee, AliExpress) and for Amazon US detail page extraction. Connects to your running Chromium browser via `--remote-debugging-port` and opens tabs in your real browser session. Your cookies, fingerprint, and login state are all authentic.
+**CDP (Chrome DevTools Protocol)** -- For sites with aggressive anti-bot (Shopee, AliExpress) and for Amazon US detail pages, eBay, and Google Shopping. Connects to your running Chromium browser via `--remote-debugging-port` and opens tabs in your real browser session.
 
-When a CDP-capable browser is detected, all providers use it for maximum accuracy — personalized prices, member discounts, accurate shipping to your address.
+When a CDP-capable browser is detected on port 9222, all providers use it for maximum accuracy.
+
+### Relevance scoring
+
+Results are filtered using a signal-based scoring engine that distinguishes the actual product from accessories:
+
+- **Title structure** -- Where query tokens appear relative to each other in the title. Products have the query at the start; accessories bury it after "for/compatible with".
+- **Price clustering** -- Where the price sits relative to the MSRP (when available) or the detected price distribution. A R$50 screen protector at MSRP R$9,000 scores near zero.
+- **String similarity** -- How closely the title matches the query. Products have focused titles; accessories dilute with compatibility lists.
+
+The three signals combine with cluster dampening: when the price signal is low, it gates the title-based signals proportionally, preventing accessories with misleading titles from passing.
 
 ## Installation
 
@@ -51,6 +82,22 @@ cargo install --path .
 
 Requires Rust 1.70+ and a Chromium-based browser for CDP mode.
 
+### CDP setup
+
+Launch your browser with remote debugging enabled:
+
+```bash
+# macOS
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+
+# Linux
+chromium --remote-debugging-port=9222
+```
+
+Pechincha auto-detects it. Shopee, AliExpress, eBay, and Google Shopping require this.
+
+For Keepa price intelligence, install the [Keepa browser extension](https://keepa.com/) in your Chromium browser.
+
 ## Usage
 
 ### Basic search
@@ -58,51 +105,42 @@ Requires Rust 1.70+ and a Chromium-based browser for CDP mode.
 ```bash
 pechincha "RTX 4070"
 pechincha "iPhone 15 128gb"
-pechincha "Dyson V15 Detect"
+pechincha "Sennheiser HD 600"
 ```
 
 ### Options
 
 ```
 -n, --limit <N>          Max results per provider [default: 10]
--p, --platforms <LIST>   Filter platforms: ml,ali,shopee,amazon,amazon_us,kabum,magalu,olx
+-p, --platforms <LIST>   Filter platforms (comma-separated)
 -s, --sort <FIELD>       Sort: total-cost, price, price-desc, rating, relevance
     --min-price <BRL>    Minimum price filter
     --max-price <BRL>    Maximum price filter
-    --cdp-port <PORT>    Connect to browser CDP port
+    --cdp-port <PORT>    CDP port [default: 9222]
+    --no-cache           Skip cache, fetch fresh results
 -j, --json               Output as JSON
+    --csv                Output as CSV
 -v                       Verbose (-v info, -vv debug, -vvv trace)
 ```
 
-### CDP mode (recommended)
-
-Launch your browser with remote debugging enabled:
+### Platform aliases
 
 ```bash
-chromium --remote-debugging-port=9222
+pechincha "Dyson V15" -p ml,amazon,amazon_us    # Only these platforms
+pechincha "AirPods Pro" -p ali,shopee,ebay       # International only
 ```
 
-Pechincha auto-detects it. All 8 providers will use your real browser session — Shopee and AliExpress require this.
+Available aliases: `ml`, `ali`, `shopee`, `amazon`, `amazon_us`, `kabum`, `magalu`, `olx`, `google`, `ebay`
 
-### Managed daemon
+### Price watch
 
-```bash
-pechincha daemon start              # Opens Chromium with CDP — log into sites
-pechincha daemon stop               # Stop and clean up
-pechincha daemon start --headless   # Headless mode (after logging in)
-pechincha daemon status             # Check if running
-```
-
-The daemon uses a separate browser profile at `~/.config/pechincha/browser-profile/`. It does not touch your personal browser data.
-
-### Login / cookie management
+Monitor products and get notified when prices drop below a threshold:
 
 ```bash
-pechincha login shopee                    # Opens browser for manual login
-pechincha login ali --from-browser chrome # Extract cookies from Chrome
-pechincha login ml --import-curl "..."    # Import from curl command
-pechincha logout shopee                   # Clear saved cookies
-pechincha providers                       # Show all providers and login status
+pechincha watch add "RTX 4070" --below 3500
+pechincha watch list
+pechincha watch remove 1
+pechincha watch run                # Check all watches (cron-friendly)
 ```
 
 ### Configuration
@@ -119,7 +157,7 @@ Config file: `~/.config/pechincha/config.toml`
 default_sort = "total-cost"
 results_per_provider = 10
 timeout_seconds = 30
-cdp_port = 9222  # auto-connect to browser
+cdp_port = 9222
 
 [providers.amazon_us]
 enabled = true
@@ -129,70 +167,65 @@ enabled = true
 
 Pechincha calculates Brazilian import taxes for international products:
 
-- **Domestic** — Taxes already included in the listed price.
-- **Remessa Conforme (< US$50)** — 20% import tax + 17% ICMS.
-- **Remessa Conforme (US$50–3000)** — 60% import tax (with US$20 deduction) + 17% ICMS.
-- **International (non-RC)** — 60% import tax + 17% ICMS.
-- **Amazon US** — Uses Amazon's actual "Shipping & Import Charges to Brazil" from the product detail page instead of estimates.
+| Regime | Import Tax | ICMS | Applies to |
+|--------|-----------|------|------------|
+| Domestic | Included | Included | ML, Amazon BR, Kabum, Magalu, OLX |
+| Remessa Conforme < US$50 | 20% | 17% | AliExpress, Shopee |
+| Remessa Conforme >= US$50 | 60% (- US$20) | 17% | AliExpress, Shopee |
+| International standard | 60% | 17% | eBay, non-RC imports |
+| Amazon US | Actual charges | Included | Amazon US detail page extraction |
 
 Exchange rate fetched from BCB (Banco Central do Brasil) PTAX API.
 
-International products are marked with 🌎 in the output.
-
 ## Keepa integration
 
-When searching Amazon US products, Pechincha extracts price intelligence from Keepa by intercepting its WebSocket data stream:
+When an Amazon product is found, Pechincha intercepts Keepa's WebSocket data stream to extract:
 
-- **MSRP / List Price** — The manufacturer's suggested retail price.
-- **Current Amazon price** — What Amazon is currently selling it for.
-- **Buy Box price** — The featured offer price.
-- **All-time low** — The lowest price ever recorded.
+- **MSRP** -- Manufacturer's suggested retail price across international Amazon domains
+- **Buy Box price** -- Current featured offer
+- **Warehouse / Refurbished** -- Discounted pricing options
+- **Price trends** -- Rising, falling, or stable indicators
+- **International comparison** -- Prices across Amazon US, CA, MX, UK, DE, JP, etc.
 
-The MSRP is used as a reference for the Savings column, adjusted for import taxes — showing whether importing at the current price is actually a good deal vs buying at full MSRP.
+The MSRP anchors the relevance scoring engine, providing the strongest signal for filtering accessories from real products.
 
-Requires the Keepa browser extension installed in your Chromium browser.
+Requires the [Keepa browser extension](https://keepa.com/) installed in your CDP browser.
 
 ## Architecture
 
 ```
 src/
-├── main.rs          # CLI (clap)
+├── main.rs          # CLI entry point (clap)
 ├── lib.rs           # Public API
-├── search.rs        # Orchestrator — CDP-first with wreq fallback
+├── search.rs        # Search orchestrator — CDP-first with wreq fallback
+├── scoring.rs       # Signal-based relevance scoring (title, price, similarity)
 ├── cdp.rs           # CDP tab management, concurrent page fetching
 ├── keepa.rs         # Keepa WebSocket interception and price extraction
 ├── tax.rs           # Brazilian import tax calculator
 ├── currency.rs      # BCB PTAX exchange rate (USD/BRL)
-├── display.rs       # Terminal table output
+├── display.rs       # Terminal output formatting
 ├── config.rs        # TOML configuration
-├── cookies.rs       # Cookie persistence and browser extraction
-├── browser.rs       # headless_chrome / chaser-oxide integration
-├── daemon.rs        # Browser daemon lifecycle management
+├── cache.rs         # Search result caching
+├── history.rs       # Price history tracking
+├── watch.rs         # Price watch / alert management
+├── notify.rs        # Desktop notifications for price drops
 ├── scraping.rs      # wreq client with TLS fingerprint impersonation
 ├── models.rs        # Product, PriceInfo, TaxInfo types
 ├── error.rs         # Error types
 └── providers/
-    ├── mod.rs           # Provider trait
-    ├── mercadolivre.rs
-    ├── amazon.rs        # Amazon BR
-    ├── amazon_us.rs     # Amazon US with detail page + Keepa
-    ├── shopee.rs        # CDP-only (anti-bot too aggressive)
-    ├── aliexpress.rs    # CDP-only (JS-rendered)
-    ├── magalu.rs        # Magazine Luiza
-    ├── kabum.rs
-    └── olx.rs
+    ├── mod.rs              # Provider trait
+    ├── mercadolivre.rs     # Mercado Livre
+    ├── amazon.rs           # Amazon BR
+    ├── amazon_us.rs        # Amazon US + detail pages
+    ├── aliexpress.rs       # AliExpress (CDP)
+    ├── shopee.rs           # Shopee (CDP)
+    ├── magalu.rs           # Magazine Luiza
+    ├── kabum.rs            # Kabum
+    ├── olx.rs              # OLX
+    ├── ebay.rs             # eBay
+    └── google_shopping.rs  # Google Shopping
 ```
-
-## Key dependencies
-
-- **wreq** + **wreq-util** — HTTP client with TLS/JA3/HTTP2 browser fingerprint impersonation
-- **chaser-oxide** — Stealth Chrome DevTools Protocol client
-- **headless_chrome** — Chrome automation for login flows
-- **scraper** — HTML parsing with CSS selectors
-- **tokio** — Async runtime
-- **rust_decimal** — Financial precision arithmetic
-- **regex-lite** — Lightweight regex for HTML parsing
 
 ## License
 
-MIT
+GNU General Public License v3.0 -- see [LICENSE](LICENSE) for details.

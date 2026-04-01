@@ -3,7 +3,9 @@ name = "pechincha"
 version = "0.1.0"
 edition = "2021"
 description = "Compare prices across Brazilian e-commerce platforms with tax-aware total cost"
-license = "MIT"
+license = "GPL-3.0-only"
+keywords = ["price-comparison", "ecommerce", "brazil", "import-tax", "web-scraping"]
+categories = ["command-line-utilities", "web-programming"]
 
 [lib]
 name = "pechincha"
