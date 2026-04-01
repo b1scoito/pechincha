@@ -28,6 +28,11 @@
 - **AliExpress domestic shipping** — AliExpress has warehouses in Brazil (Remessa Conforme). Products shipped domestically have no import tax and faster delivery. Detect and flag these listings separately from international ones.
 - **Shopee domestic shipping** — Shopee also operates local warehouses and Brazilian sellers. Distinguish domestic Shopee listings (no import tax) from cross-border ones.
 
+### Price intelligence
+- **Installment display** — Magalu already extracts installment data (e.g., "12x R$750 sem juros"). Show installment options alongside total cost for all providers that support it. Critical for the Brazilian market where parcelamento drives purchase decisions.
+- **Price history command** — `pechincha history "query"` to view tracked price changes over time. Data is already collected by the history module; needs a display layer.
+- **Coupon / cashback detection** — Detect active coupons shown in search results (eBay shows codes like "EXTRA 10% OFF WITH CODE ..."). In CDP mode, Cuponomia and Meliuz browser extensions may inject cashback badges into pages — detect and display the cashback percentage alongside the price.
+
 ### Output
 - **Product detail view** — `pechincha detail <url>` to show full info for a single product with Keepa chart data.
 - **Webhook/notification** — Expand price watch to send alerts to Telegram/Discord/Slack.
