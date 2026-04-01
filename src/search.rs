@@ -9,6 +9,7 @@ use crate::currency::ExchangeRateService;
 use crate::error::ProviderError;
 use crate::models::*;
 use crate::providers::{Provider, ProviderId};
+use crate::scoring::{self, RelevanceScore, KEEPA_CANDIDATE_THRESHOLD, RELEVANT_THRESHOLD};
 use crate::tax::TaxCalculator;
 
 pub struct SearchOrchestrator {
@@ -60,6 +61,16 @@ impl SearchOrchestrator {
         }
         if config.providers.olx.enabled || cdp_mode {
             providers.push(Arc::new(crate::providers::olx::Olx::new()));
+        }
+        // Google Shopping only when explicitly enabled — redundant with existing providers
+        // and shows misleading pre-tax prices for imports.
+        if config.providers.google_shopping.enabled {
+            providers.push(Arc::new(
+                crate::providers::google_shopping::GoogleShopping::new(),
+            ));
+        }
+        if config.providers.ebay.enabled || cdp_mode {
+            providers.push(Arc::new(crate::providers::ebay::Ebay::new()));
         }
 
         let http_client = crate::scraping::build_impersonating_client(10);
@@ -127,7 +138,8 @@ impl SearchOrchestrator {
                 .filter(|(_, p)| {
                     p.provider == ProviderId::AmazonUS
                         && !p.url.is_empty()
-                        && p.price.listed_price == Decimal::ZERO // Only fetch if price missing
+                        && p.price.listed_price == Decimal::ZERO
+                        && scoring::tokens_match(&p.title, &query.query) // Don't fetch irrelevant products
                 })
                 .map(|(i, p)| (i, p.url.clone()))
                 .take(3) // Limit concurrent detail page fetches
@@ -208,7 +220,7 @@ impl SearchOrchestrator {
             }
         }
 
-        // For Amazon BR products: fetch price from detail pages for "See buying options" items.
+        // Parallel detail page fetches: Amazon BR prices + AliExpress taxes concurrently.
         if let Some(cdp_port) = self.cdp_port {
             let amz_br_products: Vec<(usize, String)> = all_products
                 .iter()
@@ -217,24 +229,103 @@ impl SearchOrchestrator {
                     p.provider == ProviderId::Amazon
                         && !p.url.is_empty()
                         && p.price.listed_price == Decimal::ZERO
-                        && is_relevant(&p.title, &query.query)
+                        && scoring::tokens_match(&p.title, &query.query)
                 })
                 .take(3)
                 .map(|(i, p)| (i, p.url.clone()))
                 .collect();
 
-            if !amz_br_products.is_empty() {
-                eprintln!("  Fetching Amazon BR prices...");
-                for (idx, url) in &amz_br_products {
-                    if let Some(price) = crate::cdp::fetch_amazon_br_price(cdp_port, url).await {
-                        // Sanity check: price should be > R$50 for any real product
+            // Fetch AliExpress taxes for up to 3 products, then extrapolate the
+            // tax rate to all other AliExpress products.
+            let ali_products: Vec<(usize, String)> = all_products
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| {
+                    p.provider == ProviderId::AliExpress
+                        && !p.url.is_empty()
+                        && scoring::tokens_match(&p.title, &query.query)
+                })
+                .take(3)
+                .map(|(i, p)| (i, p.url.clone()))
+                .collect();
+
+            let has_work = !amz_br_products.is_empty() || !ali_products.is_empty();
+            if has_work {
+                eprintln!("  Fetching detail pages...");
+
+                // Spawn all detail page fetches concurrently
+                let mut br_handles = Vec::new();
+                for (idx, url) in amz_br_products {
+                    let handle = tokio::spawn(async move {
+                        let price = crate::cdp::fetch_amazon_br_price(cdp_port, &url).await;
+                        (idx, price)
+                    });
+                    br_handles.push(handle);
+                }
+
+                let mut ali_handles = Vec::new();
+                for (idx, url) in ali_products {
+                    let handle = tokio::spawn(async move {
+                        let tax = crate::cdp::fetch_aliexpress_tax(cdp_port, &url).await;
+                        (idx, tax)
+                    });
+                    ali_handles.push(handle);
+                }
+
+                // Collect Amazon BR results
+                for handle in br_handles {
+                    if let Ok((idx, Some(price))) = handle.await {
                         if price > Decimal::from(50) {
                             info!(idx = idx, price = %price, "Amazon BR price from detail page");
-                            all_products[*idx].price.listed_price = price;
-                            all_products[*idx].price.price_brl = price;
-                            all_products[*idx].price.total_cost = price;
+                            all_products[idx].price.listed_price = price;
+                            all_products[idx].price.price_brl = price;
+                            all_products[idx].price.total_cost = price;
                         } else {
                             warn!(idx = idx, price = %price, "Amazon BR price too low, skipping");
+                        }
+                    }
+                }
+
+                // Collect AliExpress tax results and compute average tax ratio
+                let mut ali_tax_ratios: Vec<Decimal> = Vec::new();
+                let mut fetched_indices = std::collections::HashSet::new();
+                for handle in ali_handles {
+                    if let Ok((idx, Some(tax))) = handle.await {
+                        let listed = all_products[idx].price.listed_price;
+                        if listed > Decimal::ZERO {
+                            let ratio = tax / listed;
+                            ali_tax_ratios.push(ratio);
+                            info!(idx = idx, tax = %tax, ratio = %ratio, "AliExpress tax fetched");
+                        }
+                        fetched_indices.insert(idx);
+                        all_products[idx].price.tax.import_tax = Some(tax);
+                        all_products[idx].price.tax.total_tax = tax;
+                        all_products[idx].price.tax.taxes_included = true;
+                        all_products[idx].price.tax.tax_regime = TaxRegime::RemessaConformeOver50;
+                    }
+                }
+
+                // Apply average tax ratio to ALL remaining AliExpress products
+                // (regardless of taxes_included flag — search results never include tax)
+                if !ali_tax_ratios.is_empty() {
+                    let avg_ratio = ali_tax_ratios.iter().sum::<Decimal>()
+                        / Decimal::from(ali_tax_ratios.len() as u32);
+                    info!(avg_ratio = %avg_ratio, samples = ali_tax_ratios.len(), "AliExpress tax ratio");
+
+                    for (i, product) in all_products.iter_mut().enumerate() {
+                        if product.provider == ProviderId::AliExpress
+                            && !fetched_indices.contains(&i)
+                        {
+                            let estimated_tax = product.price.listed_price * avg_ratio;
+                            product.price.tax.import_tax = Some(estimated_tax);
+                            product.price.tax.total_tax = estimated_tax;
+                            product.price.tax.taxes_included = true;
+                            product.price.tax.tax_regime = TaxRegime::RemessaConformeOver50;
+                            debug!(
+                                title = %truncate_str(&product.title, 40),
+                                tax = %estimated_tax,
+                                "AliExpress tax extrapolated from ratio"
+                            );
                         }
                     }
                 }
@@ -243,53 +334,21 @@ impl SearchOrchestrator {
             // Don't remove zero-price BR products yet — Keepa may fill the price later
         }
 
-        // For AliExpress products: fetch exact tax from product detail pages.
-        // AliExpress shows "R$X em impostos estimados" on product pages.
-        // Fetch for the top 2 relevant AliExpress products.
-        if let Some(cdp_port) = self.cdp_port {
-            let ali_products: Vec<(usize, String)> = all_products
-                .iter()
-                .enumerate()
-                .filter(|(_, p)| {
-                    p.provider == ProviderId::AliExpress
-                        && !p.url.is_empty()
-                        && is_relevant(&p.title, &query.query)
-                })
-                .take(2)
-                .map(|(i, p)| (i, p.url.clone()))
-                .collect();
-
-            if !ali_products.is_empty() {
-                eprintln!("  Fetching AliExpress taxes...");
-                for (idx, url) in ali_products {
-                    if let Some(tax) = crate::cdp::fetch_aliexpress_tax(cdp_port, &url).await {
-                        all_products[idx].price.tax.import_tax = Some(tax);
-                        all_products[idx].price.tax.total_tax = tax;
-                        all_products[idx].price.tax.taxes_included = true; // Now we have the real tax
-                        all_products[idx].price.tax.tax_regime = TaxRegime::RemessaConformeOver50;
-                    }
-                }
-            }
-        }
-
         // Keepa price intelligence — fetch international Amazon prices.
         // Pick the best ASIN (actual product, not accessories) by selecting
         // the highest-priced product with the best title relevance match.
         if let Some(cdp_port) = self.cdp_port {
-            // Pick the best ASIN: score by title match quality + review count.
-            // The actual product (e.g. "Dyson V15 Detect Cordless Vacuum") has the
-            // query terms at the START of the title. Accessories have them buried
-            // ("Filtro compatível com Dyson V15 V11 V10...").
+            // Pick the best ASIN using signal-based scoring.
             let mut seen_asins = std::collections::HashSet::new();
-            let mut candidates: Vec<(String, u32, u32, Decimal, u8, String)> = all_products
+            let mut candidates: Vec<(String, f64, u32, Decimal, u8, String)> = all_products
                 .iter()
                 .filter(|p| {
                     (p.provider == ProviderId::Amazon || p.provider == ProviderId::AmazonUS)
                         && !p.platform_id.is_empty()
                         && p.platform_id.len() == 10
-                        && seen_asins.insert(p.platform_id.clone())
-                        && is_relevant(&p.title, &query.query)
+                        && scoring::tokens_match(&p.title, &query.query)
                 })
+                .filter(|p| seen_asins.insert(p.platform_id.clone()))
                 .map(|p| {
                     let domain = if p.provider == ProviderId::Amazon {
                         crate::keepa::DOMAIN_BR
@@ -297,24 +356,24 @@ impl SearchOrchestrator {
                         crate::keepa::DOMAIN_US
                     };
                     let reviews = p.review_count.unwrap_or(0);
-                    let title_score = title_match_score(&p.title, &query.query);
-                    (p.platform_id.clone(), title_score, reviews, p.price.listed_price, domain, p.title.clone())
+                    let score = scoring::score_product(&p.title, &query.query, 0.5, 1.0);
+                    (p.platform_id.clone(), score.total, reviews, p.price.listed_price, domain, p.title.clone())
                 })
                 .collect();
 
-            // Sort by: title score desc, then reviews desc, then price desc
+            // Sort by relevance score desc, then reviews, then price
             candidates.sort_by(|a, b| {
-                b.1.cmp(&a.1) // title match score (higher = better match)
-                    .then(b.2.cmp(&a.2)) // reviews (more = more popular)
-                    .then(b.3.cmp(&a.3)) // price (higher = actual product)
+                b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal)
+                    .then(b.2.cmp(&a.2))
+                    .then(b.3.cmp(&a.3))
             });
 
-            // Log top candidates for debugging
-            for (i, (asin, score, reviews, _price, domain, title)) in candidates.iter().take(3).enumerate() {
+            // Log top candidates
+            for (i, (asin, score, reviews, _price, domain, title)) in candidates.iter().take(5).enumerate() {
                 debug!(
                     rank = i + 1,
                     asin = %asin,
-                    score = score,
+                    score = format!("{:.2}", score),
                     reviews = reviews,
                     domain = domain,
                     title = %truncate_str(title, 60),
@@ -322,21 +381,19 @@ impl SearchOrchestrator {
                 );
             }
 
-            // Take the single best ASIN — best title match with most reviews.
-            // Skip if the best candidate has a very low title score (likely wrong product).
-            let min_keepa_score = 50u32;
+            // Take the best candidate above the threshold
             if let Some((best_asin, score, reviews, price, domain, title)) = candidates.first() {
-                if *score < min_keepa_score {
+                if *score < KEEPA_CANDIDATE_THRESHOLD {
                     info!(
                         asin = %best_asin,
-                        title_score = score,
+                        score = format!("{:.2}", score),
                         title = %truncate_str(title, 50),
                         "Skipping Keepa — best candidate score too low"
                     );
                 } else {
                 info!(
                     asin = %best_asin,
-                    title_score = score,
+                    score = format!("{:.2}", score),
                     reviews = reviews,
                     price = %price,
                     domain = %domain,
@@ -350,41 +407,114 @@ impl SearchOrchestrator {
                     crate::keepa::fetch_keepa_comparison(cdp_port, best_asin, *domain)
                 ).await.unwrap_or_default();
 
-                // Fallback: if comparison failed (<=1 domain), try single US fetch
+                // Track which ASIN the insights came from (may change on fallback)
+                let mut effective_asin = best_asin.clone();
+
+                // Fallback: if comparison failed (<=1 domain), try a US ASIN.
+                // The original ASIN may be from Amazon BR and not exist on Keepa's
+                // US database.  Find the best US candidate from the list instead.
                 let insights = if insights.len() <= 1 {
-                    warn!("Keepa comparison got {} domains, trying single US fetch", insights.len());
-                    let single = tokio::time::timeout(
-                        std::time::Duration::from_secs(20),
-                        crate::keepa::fetch_keepa_data(cdp_port, best_asin, crate::keepa::DOMAIN_US)
-                    ).await.ok().flatten();
-                    let mut combined = insights;
-                    if let Some(insight) = single {
-                        if !combined.iter().any(|k| k.domain == insight.domain) {
-                            combined.push(insight);
+                    let us_fallback_asin = candidates.iter()
+                        .find(|(asin, _, _, _, domain, _)| {
+                            *domain == crate::keepa::DOMAIN_US && asin != best_asin
+                        })
+                        .map(|(asin, ..)| asin.clone());
+
+                    if let Some(ref us_asin) = us_fallback_asin {
+                        warn!(
+                            br_asin = %best_asin,
+                            us_asin = %us_asin,
+                            "Keepa comparison got {} domains, falling back to US ASIN",
+                            insights.len()
+                        );
+                        let us_insights = tokio::time::timeout(
+                            std::time::Duration::from_secs(35),
+                            crate::keepa::fetch_keepa_comparison(cdp_port, us_asin, crate::keepa::DOMAIN_US)
+                        ).await.unwrap_or_default();
+                        if us_insights.len() > insights.len() {
+                            effective_asin = us_asin.clone();
+                            us_insights
+                        } else {
+                            insights
                         }
+                    } else {
+                        warn!("Keepa comparison got {} domains, no US fallback available", insights.len());
+                        // Last resort: try the same ASIN on US domain
+                        let single = tokio::time::timeout(
+                            std::time::Duration::from_secs(20),
+                            crate::keepa::fetch_keepa_data(cdp_port, best_asin, crate::keepa::DOMAIN_US)
+                        ).await.ok().flatten();
+                        let mut combined = insights;
+                        if let Some(insight) = single {
+                            if !combined.iter().any(|k| k.domain == insight.domain) {
+                                combined.push(insight);
+                            }
+                        }
+                        combined
                     }
-                    combined
                 } else {
                     insights
                 };
 
                 if !insights.is_empty() {
-                    // Find MSRP: prefer US list_price, fall back to any domain's list_price
-                    let msrp = insights.iter()
-                        .find(|k| k.domain == crate::keepa::DOMAIN_US)
-                        .and_then(|k| k.msrp())
-                        .or_else(|| {
-                            // Fallback: any domain's MSRP (BR, CA, etc.)
-                            insights.iter().find_map(|k| k.msrp())
-                        });
+                    // Find MSRP: use median across all domains (converted to USD).
+                    // Single-domain MSRP can be misleading (e.g. JPY ¥396 misconverted).
+                    // Median of all available MSRPs gives a robust reference.
+                    let msrp = {
+                        let mut msrp_usd_values: Vec<Decimal> = insights.iter()
+                            .filter_map(|k| k.msrp_usd())
+                            .filter(|&m| m > Decimal::ZERO)
+                            .collect();
+                        msrp_usd_values.sort();
+                        if msrp_usd_values.is_empty() {
+                            None
+                        } else if msrp_usd_values.len() == 1 {
+                            Some(msrp_usd_values[0])
+                        } else {
+                            // Median
+                            let mid = msrp_usd_values.len() / 2;
+                            Some(msrp_usd_values[mid])
+                        }
+                    };
 
-                    if let Some(ref m) = msrp {
-                        info!(asin = %best_asin, msrp = %m, domains = insights.len(), "Keepa MSRP");
-                    }
+                    // MSRP sanity check: compare against the median price of actual
+                    // search results. If MSRP is <10% of median, we probably picked
+                    // an accessory ASIN — discard the MSRP to avoid corrupting filters.
+                    let msrp = msrp.and_then(|m| {
+                        let mut result_prices: Vec<Decimal> = all_products.iter()
+                            .filter(|p| p.price.listed_price > Decimal::ZERO && scoring::tokens_match(&p.title, &query.query))
+                            .map(|p| p.price.listed_price)
+                            .collect();
+                        result_prices.sort();
+                        let median = if result_prices.is_empty() {
+                            Decimal::ZERO
+                        } else {
+                            result_prices[result_prices.len() / 2]
+                        };
+                        // Convert MSRP to BRL for comparison
+                        let msrp_brl = m * exchange_rate;
+                        if median > Decimal::ZERO && msrp_brl < median * rust_decimal_macros::dec!(0.10) {
+                            warn!(
+                                msrp = %m,
+                                msrp_brl = %msrp_brl,
+                                median = %median,
+                                "Keepa MSRP suspiciously low vs median — discarding"
+                            );
+                            None
+                        } else {
+                            info!(asin = %effective_asin, msrp = %m, domains = insights.len(), "Keepa MSRP");
+                            Some(m)
+                        }
+                    });
 
-                    // Attach Keepa data to ALL Amazon products with this ASIN
+                    // Attach Keepa data to products matching the effective ASIN
+                    // (could be the original BR ASIN or the US fallback)
                     for product in all_products.iter_mut() {
-                        if product.platform_id != *best_asin { continue; }
+                        if product.platform_id != effective_asin
+                            && product.platform_id != *best_asin
+                        {
+                            continue;
+                        }
 
                         product.keepa = insights.clone();
 
@@ -406,19 +536,27 @@ impl SearchOrchestrator {
                             }
                         }
                     }
-                    // Fallback: if Keepa didn't provide MSRP, fetch detail page for this ASIN
+                    // Fallback: if Keepa didn't provide MSRP, fetch detail page
                     let has_msrp = all_products.iter().any(|p| {
-                        p.platform_id == *best_asin && p.price.original_price.is_some()
+                        (p.platform_id == effective_asin || p.platform_id == *best_asin)
+                            && p.price.original_price.is_some()
                     });
 
-                    if !has_msrp && *domain == crate::keepa::DOMAIN_US {
-                        info!("No Keepa MSRP, fetching detail page for {}", best_asin);
-                        let url = format!("https://www.amazon.com/dp/{}", best_asin);
+                    if !has_msrp {
+                        let detail_asin = if effective_asin != *best_asin {
+                            &effective_asin
+                        } else {
+                            best_asin
+                        };
+                        info!("No Keepa MSRP, fetching detail page for {}", detail_asin);
+                        let url = format!("https://www.amazon.com/dp/{}", detail_asin);
                         if let Some(details) = crate::cdp::fetch_amazon_us_details(cdp_port, &url).await {
                             if let Some(msrp) = details.msrp {
-                                info!(asin = %best_asin, msrp = %msrp, "MSRP from detail page");
+                                info!(asin = %detail_asin, msrp = %msrp, "MSRP from detail page");
                                 for product in all_products.iter_mut() {
-                                    if product.platform_id == *best_asin {
+                                    if product.platform_id == *detail_asin
+                                        || product.platform_id == *best_asin
+                                    {
                                         product.price.original_price = Some(msrp);
                                     }
                                 }
@@ -489,91 +627,72 @@ impl SearchOrchestrator {
                 + product.price.tax.total_tax;
         }
 
-        // Relevance filter: keep only products whose title matches the core search terms.
-        all_products.retain(|p| is_relevant(&p.title, &query.query));
+        // ── Signal-based relevance scoring ──────────────────────────────────
+        // Combines title structure, price clustering, and string similarity
+        // into a single 0.0–1.0 score. Replaces hard-coded word lists and
+        // magic MSRP/price thresholds.
+        {
+            // Step 1: token pre-filter (cheap — removes obviously irrelevant results)
+            all_products.retain(|p| scoring::tokens_match(&p.title, &query.query));
 
-        // Bundle filter: if the user didn't search for a bundle, remove bundle results.
-        // Bundles match relevance (contain all query tokens) but aren't what the user wants.
-        let query_lower = query.query.to_lowercase();
-        let query_wants_bundle = query_lower.contains("bundle") || query_lower.contains("combo") || query_lower.contains("kit");
-        if !query_wants_bundle {
-            all_products.retain(|p| {
-                let t = p.title.to_lowercase();
-                !t.contains("bundle") && !t.contains(" combo ") && !t.contains("soundbar")
-            });
-        }
+            // Step 2: compute price cluster scores, anchored by MSRP when available
+            let msrp_brl: Option<f64> = all_products.iter()
+                .filter(|p| !p.keepa.is_empty())
+                .filter_map(|p| p.price.original_price)
+                .next()
+                .map(|msrp_usd| {
+                    let brl = msrp_usd * exchange_rate;
+                    brl.to_string().parse::<f64>().unwrap_or(0.0)
+                });
+            if let Some(ref m) = msrp_brl {
+                debug!(msrp_brl = m, "Using MSRP anchor for price clustering");
+            }
+            let prices: Vec<Decimal> = all_products.iter().map(|p| p.price.total_cost).collect();
+            let (cluster_scores, gap_ratio) = scoring::price_cluster_scores(&prices, msrp_brl);
 
-        // MSRP-based accessory filter: if we have a reference MSRP from Keepa,
-        // products priced below 10% of it are almost certainly accessories.
-        // E.g., MSRP $600 → filter out R$60 filters and R$130 accessories.
-        // Only use Keepa-sourced MSRPs (USD, from Amazon products with Keepa data).
-        let reference_msrp_brl: Option<Decimal> = all_products.iter()
-            .filter(|p| !p.keepa.is_empty() || p.price.currency == Currency::USD)
-            .filter_map(|p| p.price.original_price.map(|msrp| {
-                if p.price.currency == Currency::USD || !p.keepa.is_empty() {
-                    msrp * exchange_rate // Keepa MSRP is always in USD cents → dollars
-                } else {
-                    msrp
-                }
-            }))
-            .max();
-
-        if let Some(msrp_brl) = reference_msrp_brl {
+            // Step 3: score each product and filter
             let before = all_products.len();
+            let scored: Vec<(usize, RelevanceScore)> = all_products
+                .iter()
+                .enumerate()
+                .zip(cluster_scores.iter())
+                .map(|((i, p), &cs)| {
+                    let score = scoring::score_product(&p.title, &query.query, cs, gap_ratio);
+                    (i, score)
+                })
+                .collect();
 
-            // Two-tier accessory filter:
-            // 1. Products below 15% of MSRP are definitely accessories (filters, brushes)
-            let hard_min = msrp_brl * rust_decimal_macros::dec!(0.15);
-            // 2. Products below 45% with accessory keywords in title are likely stands/holders/parts
-            let soft_min = msrp_brl * rust_decimal_macros::dec!(0.45);
+            // Log low-scoring products for debugging
+            for (i, score) in &scored {
+                if score.total < RELEVANT_THRESHOLD {
+                    debug!(
+                        title = %truncate_str(&all_products[*i].title, 50),
+                        score = format!("{:.2}", score.total),
+                        structure = format!("{:.2}", score.title_structure),
+                        cluster = format!("{:.2}", score.price_cluster),
+                        similarity = format!("{:.2}", score.string_similarity),
+                        "Filtered by relevance score"
+                    );
+                }
+            }
 
-            all_products.retain(|p| {
-                if p.price.total_cost < hard_min {
-                    return false; // Definitely an accessory
-                }
-                if p.price.total_cost < soft_min && is_accessory_title(&p.title) {
-                    return false; // Accessory keyword + low price = accessory
-                }
-                true
+            // Keep only indices that pass the threshold
+            let keep: std::collections::HashSet<usize> = scored
+                .iter()
+                .filter(|(_, s)| s.total >= RELEVANT_THRESHOLD)
+                .map(|(i, _)| *i)
+                .collect();
+
+            let mut idx = 0;
+            all_products.retain(|_| {
+                let result = keep.contains(&idx);
+                idx += 1;
+                result
             });
 
             let filtered = before - all_products.len();
             if filtered > 0 {
-                debug!(
-                    filtered = filtered,
-                    hard_min = %hard_min,
-                    soft_min = %soft_min,
-                    msrp = %msrp_brl,
-                    "Filtered accessories by MSRP + title"
-                );
-            }
-        }
-
-        // Fallback: price-clustering filter when no MSRP is available.
-        // If prices span >10x range AND there are accessory-titled items,
-        // use the highest-priced product as reference and filter accessories below 20%.
-        if reference_msrp_brl.is_none() && all_products.len() > 3 {
-            let mut prices: Vec<Decimal> = all_products.iter().map(|p| p.price.total_cost).collect();
-            prices.sort();
-            let lowest = prices[0];
-            let highest = prices[prices.len() - 1];
-
-            if highest > lowest * Decimal::from(10) {
-                // Huge price spread — likely accessories mixed with actual product
-                let threshold = highest * rust_decimal_macros::dec!(0.15);
-                let before = all_products.len();
-                all_products.retain(|p| {
-                    p.price.total_cost >= threshold || !is_accessory_title(&p.title)
-                });
-                let filtered = before - all_products.len();
-                if filtered > 0 {
-                    debug!(
-                        filtered = filtered,
-                        threshold = %threshold,
-                        highest = %highest,
-                        "Filtered accessories by price clustering"
-                    );
-                }
+                debug!(filtered = filtered, threshold = RELEVANT_THRESHOLD, "Signal-based filtering");
             }
         }
 
@@ -632,6 +751,11 @@ impl SearchOrchestrator {
             });
         }
 
+        // Clean up any leaked CDP tabs
+        if let Some(cdp_port) = self.cdp_port {
+            crate::cdp::cleanup_tabs(cdp_port).await;
+        }
+
         let query_time = start.elapsed();
         info!(
             results = all_products.len(),
@@ -650,97 +774,8 @@ impl SearchOrchestrator {
 
 }
 
-/// Check if a product title is relevant to the search query.
-///
-/// Simple, strict rule: ALL significant query tokens must appear in the title.
-/// No partial matching, no thresholds, no core/non-core distinction.
-/// Every word the user typed matters.
-///
-/// Handles: accent normalization, hyphen splitting, compound numbers (v15 = "v15" or "v 15").
-fn is_relevant(title: &str, query: &str) -> bool {
-    let stop_words: &[&str] = &[
-        "de", "do", "da", "dos", "das", "para", "com", "sem", "por", "em", "no", "na",
-        "the", "for", "with", "and", "or", "a", "an", "o", "e", "um", "uma",
-    ];
-
-    let normalize = |s: &str| -> String {
-        s.to_lowercase()
-            .replace('-', " ")
-            .replace('_', " ")
-            .split_whitespace()
-            .collect::<Vec<_>>()
-            .join(" ")
-    };
-
-    let title_norm = normalize(title);
-    let title_compact = title_norm.replace(' ', ""); // for compound matching: "v 15" → "v15"
-
-    let query_tokens: Vec<String> = normalize(query)
-        .split_whitespace()
-        .filter(|t| t.len() > 1 && !stop_words.contains(t))
-        .map(|s| s.to_string())
-        .collect();
-
-    if query_tokens.is_empty() {
-        return true;
-    }
-
-    // ALL tokens must match — either as substring in title, or in compact form
-    query_tokens.iter().all(|token| {
-        title_norm.contains(token.as_str()) || title_compact.contains(token.as_str())
-    })
-}
-
-/// Score how well a product title matches the search query.
-/// Higher = better match. The actual product has query terms at the START of the title.
-/// Accessories bury them in "compatible with X Y Z" lists.
-fn title_match_score(title: &str, query: &str) -> u32 {
-    let title_lower = title.to_lowercase();
-    let query_lower = query.to_lowercase();
-
-    let mut score = 0u32;
-
-    // Bonus: query appears as an exact phrase in the title (strongest signal)
-    if title_lower.contains(&query_lower) {
-        score += 100;
-    }
-
-    // Bonus: query phrase appears in the first 60 chars (product name, not compat list)
-    let title_start: String = title_lower.chars().take(60).collect();
-    if title_start.contains(&query_lower) {
-        score += 50;
-    }
-
-    // Check each query token — where does it appear in the title?
-    let tokens: Vec<&str> = query_lower.split_whitespace().collect();
-    for token in &tokens {
-        if let Some(pos) = title_lower.find(token) {
-            // Token found early in title = actual product, not accessory
-            if pos < 30 { score += 20; }
-            else if pos < 60 { score += 10; }
-            else { score += 5; }
-        }
-    }
-
-    // Penalty: accessories, bundles, and non-product items
-    let penalty_words = [
-        // Accessories
-        "compativel", "compatível", "substituição", "substituicao",
-        "filtro", "filter", "peças", "pecas", "acessório", "acessorio",
-        "replacement", "attachment", "stand", "suporte", "bracket",
-        // Bundles (we want the standalone product, not combos)
-        "bundle", "combo", "kit de", "kit com", "soundbar",
-        // Cases & covers
-        "case", "capa", "película", "pelicula", "protetor",
-    ];
-    for word in &penalty_words {
-        if title_lower.contains(word) {
-            score = score.saturating_sub(30);
-        }
-    }
-
-    score
-}
+// Old is_relevant, title_match_score, is_accessory_title removed.
+// All relevance logic now lives in src/scoring.rs using signal-based scoring.
 
 /// Deduplicate products: remove near-identical listings from the same platform.
 /// Products are considered duplicates when:
@@ -791,28 +826,15 @@ fn normalize_for_dedup(title: &str) -> String {
         .join(" ")
 }
 
-/// Check if a product title indicates it's an accessory, not the main product.
-fn is_accessory_title(title: &str) -> bool {
-    let lower = title.to_lowercase();
-    let accessory_patterns = [
-        "stand", "suporte", "holder", "docking", "station", "organizer",
-        "filtro", "filter", "replacement", "substituição", "substituicao",
-        "brush", "escova", "roller", "rolo", "attachment", "acessório",
-        "acessorio", "accessory", "accessories", "peças", "pecas",
-        "cleanerhead", "battery", "bateria", "charger", "carregador",
-        "hose", "mangueira", "tube", "tubo", "mount", "bracket",
-        "compatível", "compativel", "compatible", "para aspirador",
-        "ferramenta de", "tool for",
-        "bundle", "combo", "soundbar", "kit de", "kit com",
-        "case", "capa", "película", "pelicula", "protetor",
-    ];
-    accessory_patterns.iter().any(|pat| lower.contains(pat))
-}
-
 
 fn truncate_str(s: &str, max: usize) -> String {
-    if s.len() <= max { s.to_string() }
-    else { format!("{}...", &s[..max.saturating_sub(3)]) }
+    if s.len() <= max {
+        s.to_string()
+    } else {
+        let end = max.saturating_sub(3);
+        let boundary = s.floor_char_boundary(end);
+        format!("{}...", &s[..boundary])
+    }
 }
 
 impl SearchOrchestrator {
