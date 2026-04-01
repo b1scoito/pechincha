@@ -109,7 +109,8 @@ Pechincha auto-detects the browser on port 9222.
 2. Log in to your accounts (Amazon, Mercado Livre, Shopee, AliExpress, etc.)
 3. Set your delivery address to your Brazilian address on each platform
 4. **Browse each site manually for a few minutes** -- search for products, scroll through results, click on listings. This builds a human browsing fingerprint so anti-bot systems don't flag your session when Pechincha starts opening tabs.
-5. Install the [Keepa browser extension](https://keepa.com/) for Amazon price intelligence
+5. **Shopee**: complete the captcha right before running Pechincha -- Shopee's captcha expires quickly, so solve it and search immediately after
+6. Install the [Keepa browser extension](https://keepa.com/) for Amazon price intelligence
 
 ## Usage
 
