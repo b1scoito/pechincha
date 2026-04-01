@@ -371,8 +371,9 @@ fn string_similarity_score(title: &str, query: &str) -> f64 {
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-/// Cheap pre-filter: all query tokens must appear in the title.
-/// Used before prices are available (for CDP fetch decisions).
+/// Cheap pre-filter: all query tokens must appear in the title as whole words.
+/// Uses word-boundary matching to prevent "l40" from matching "l40s" or "ae"
+/// from matching inside "dreame".
 #[must_use]
 pub fn tokens_match(title: &str, query: &str) -> bool {
     let stop_words: &[&str] = &[
@@ -381,6 +382,8 @@ pub fn tokens_match(title: &str, query: &str) -> bool {
     ];
 
     let title_norm = normalize(title);
+    let title_words: Vec<&str> = title_norm.split_whitespace().collect();
+    // Compact form for compound tokens like "v15" that might appear as "v 15"
     let title_compact = title_norm.replace(' ', "");
 
     let query_tokens: Vec<String> = normalize(query)
@@ -393,9 +396,21 @@ pub fn tokens_match(title: &str, query: &str) -> bool {
         return true;
     }
 
-    query_tokens
-        .iter()
-        .all(|token| title_norm.contains(token.as_str()) || title_compact.contains(token.as_str()))
+    query_tokens.iter().all(|token| {
+        // Match as a whole word: title word must equal the token or start with it
+        // followed by a non-alphanumeric char (e.g., "l40" matches "l40" but not "l40s")
+        title_words.iter().any(|w| {
+            *w == token.as_str() || w.starts_with(token.as_str()) && {
+                let rest = &w[token.len()..];
+                // Allow match if remainder is non-alphanumeric (punctuation like comma, slash)
+                rest.starts_with(|c: char| !c.is_alphanumeric())
+            }
+        })
+        // Fallback: compound tokens containing digits in compact form
+        // (e.g., "hd600" in "sennheiserhd600").  Only for tokens with digits
+        // to avoid short alphabetic tokens like "ae" matching inside words.
+        || (token.chars().any(|c| c.is_ascii_digit()) && title_compact.contains(token.as_str()))
+    })
 }
 
 /// Normalize text for comparison: lowercase, strip diacritics, split hyphens.
@@ -469,6 +484,18 @@ mod tests {
         assert!(tokens_match("Sennheiser HD 600 Open Back", "Sennheiser HD 600"));
         assert!(!tokens_match("Sennheiser HD 650 Open Back", "Sennheiser HD 600"));
         assert!(tokens_match("Dyson V15 Detect Plus", "Dyson V15 Detect"));
+        // Word boundary: "L40" should NOT match "L40s" (different model)
+        assert!(!tokens_match(
+            "DREAME Combo robô aspirador L40s Ultra CE",
+            "Dreame L40 Ultra AE"
+        ));
+        // Exact word match should still work
+        assert!(tokens_match(
+            "DREAME L40 Ultra AE Robot Vacuum",
+            "Dreame L40 Ultra AE"
+        ));
+        // Digit-containing tokens use compact fallback: "v15" in "dysonv15detect"
+        assert!(tokens_match("Dyson V15Detect Plus", "V15"));
     }
 
     #[test]
