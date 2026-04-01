@@ -62,7 +62,13 @@ Pechincha uses two strategies depending on the site:
 
 **CDP (Chrome DevTools Protocol)** -- For sites with aggressive anti-bot (Shopee, AliExpress) and for Amazon US detail pages, eBay, and Google Shopping. Connects to your running Chromium browser via `--remote-debugging-port` and opens tabs in your real browser session.
 
-When a CDP-capable browser is detected on port 9222, all providers use it for maximum accuracy.
+When a CDP-capable browser is detected on port 9222, **all providers use it** -- even those that work with wreq. This is the recommended setup because your real browser session carries:
+
+- **Login state** -- Logged-in accounts see member prices, coupons, and personalized offers that anonymous scraping misses.
+- **Delivery address** -- Shipping costs and availability depend on your location. Set your delivery address on each platform for accurate totals.
+- **Cookies and fingerprint** -- Your authentic browser profile bypasses anti-bot measures that block headless clients.
+
+For best results, open each provider's website in the CDP browser, log in, and set your Brazilian delivery address before searching.
 
 ### Relevance scoring
 
@@ -82,7 +88,9 @@ cargo install --path .
 
 Requires Rust 1.70+ and a Chromium-based browser for CDP mode.
 
-### CDP setup
+### CDP setup (recommended)
+
+CDP mode is **strongly recommended**. Without it, Shopee, AliExpress, eBay, and Google Shopping won't work, and other providers will return anonymous prices without member discounts or accurate shipping.
 
 Launch your browser with remote debugging enabled:
 
@@ -94,9 +102,13 @@ Launch your browser with remote debugging enabled:
 chromium --remote-debugging-port=9222
 ```
 
-Pechincha auto-detects it. Shopee, AliExpress, eBay, and Google Shopping require this.
+Pechincha auto-detects the browser on port 9222.
 
-For Keepa price intelligence, install the [Keepa browser extension](https://keepa.com/) in your Chromium browser.
+**First-time setup checklist:**
+1. Open each provider's website in the CDP browser
+2. Log in to your accounts (Amazon, Mercado Livre, Shopee, AliExpress, etc.)
+3. Set your delivery address to your Brazilian address on each platform
+4. Install the [Keepa browser extension](https://keepa.com/) for Amazon price intelligence
 
 ## Usage
 
