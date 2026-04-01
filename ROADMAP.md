@@ -24,9 +24,12 @@
 ### Search quality
 - **Pagination / deep search** — `--deep` flag to fetch page 2+ from each provider for broader results.
 
+### Shipping
+- **AliExpress domestic shipping** — AliExpress has warehouses in Brazil (Remessa Conforme). Products shipped domestically have no import tax and faster delivery. Detect and flag these listings separately from international ones.
+- **Shopee domestic shipping** — Shopee also operates local warehouses and Brazilian sellers. Distinguish domestic Shopee listings (no import tax) from cross-border ones.
+
 ### Output
 - **Product detail view** — `pechincha detail <url>` to show full info for a single product with Keepa chart data.
-- **Interactive mode** — TUI with keyboard navigation, open links in browser.
 - **Webhook/notification** — Expand price watch to send alerts to Telegram/Discord/Slack.
 
 ### Performance
