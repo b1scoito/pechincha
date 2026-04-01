@@ -4,7 +4,7 @@ use rust_decimal::Decimal;
 use tracing::{debug, info, warn};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct Shopee {
@@ -12,12 +12,14 @@ pub struct Shopee {
 }
 
 impl Shopee {
-    pub fn new(cdp_port: Option<u16>) -> Self {
+    #[must_use]
+    pub const fn new(cdp_port: Option<u16>) -> Self {
         Self { cdp_port }
     }
 }
 
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Shopee {
     fn name(&self) -> &str {
         "Shopee"
@@ -101,7 +103,6 @@ fn parse_shopee_html(html: &str, max_results: usize) -> Vec<Product> {
         }
 
         let href = cap.get(1).unwrap().as_str();
-        let _shop_id = cap.get(2).unwrap().as_str();
         let item_id = cap.get(3).unwrap().as_str();
 
         if seen.contains(item_id) {
@@ -112,7 +113,7 @@ fn parse_shopee_html(html: &str, max_results: usize) -> Vec<Product> {
         // Find the <a> tag containing this link and extract text content
         let link_pos = cap.get(0).unwrap().start();
         let a_start = html[..link_pos].rfind("<a ").unwrap_or(link_pos);
-        let a_end = html[link_pos..].find("</a>").map(|i| link_pos + i + 4).unwrap_or(link_pos);
+        let a_end = html[link_pos..].find("</a>").map_or(link_pos, |i| link_pos + i + 4);
         let a_tag = &html[a_start..a_end];
 
         // Extract all text nodes from the <a> tag
@@ -340,8 +341,7 @@ fn parse_shopee_price(text: &str) -> Decimal {
     // Shopee displays prices like "R$1.234,56" or "R$ 1.234"
     let cleaned: String = text
         .replace("R$", "")
-        .replace(" ", "")
-        .replace(".", "")
-        .replace(",", ".");
+        .replace([' ', '.'], "")
+        .replace(',', ".");
     cleaned.trim().parse().unwrap_or(Decimal::ZERO)
 }

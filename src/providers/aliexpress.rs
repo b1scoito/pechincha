@@ -4,7 +4,7 @@ use rust_decimal::Decimal;
 use tracing::{debug, info, warn};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct AliExpress {
@@ -12,12 +12,14 @@ pub struct AliExpress {
 }
 
 impl AliExpress {
-    pub fn new(cdp_port: Option<u16>) -> Self {
+    #[must_use]
+    pub const fn new(cdp_port: Option<u16>) -> Self {
         Self { cdp_port }
     }
 }
 
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for AliExpress {
     fn name(&self) -> &str {
         "AliExpress"
@@ -169,10 +171,10 @@ fn parse_ali_item(item: &serde_json::Value) -> Option<Product> {
     }
 
     let product_id = item["productId"].as_str().unwrap_or("").to_string();
-    let url = if !product_id.is_empty() {
-        format!("https://pt.aliexpress.com/item/{product_id}.html")
-    } else {
+    let url = if product_id.is_empty() {
         String::new()
+    } else {
+        format!("https://pt.aliexpress.com/item/{product_id}.html")
     };
 
     let image = item["image"]["imgUrl"].as_str().map(|s| {
@@ -239,7 +241,7 @@ fn scrape_rendered_html(html: &str, max_results: usize) -> Vec<Product> {
 
     // Find card wrappers containing product links
     let card_re = regex_lite::Regex::new(r"card-out-wrapper").unwrap();
-    let item_re = regex_lite::Regex::new(r#"item/(\d+)\.html"#).unwrap();
+    let item_re = regex_lite::Regex::new(r"item/(\d+)\.html").unwrap();
     let img_alt_re = regex_lite::Regex::new(r#"alt="([^"]{15,200})""#).unwrap();
     let img_src_re = regex_lite::Regex::new(r#"src="(//ae-pic[^"]+)""#).unwrap();
     let price_full_re = regex_lite::Regex::new(r"R\$([\d.,]+)").unwrap();
@@ -281,11 +283,8 @@ fn scrape_rendered_html(html: &str, max_results: usize) -> Vec<Product> {
 
         // Price: find first "R$X.XXX,XX" pattern (full price in one node)
         // or construct from separate "R$" + integer + cents nodes
-        let price = if let Some(cap) = price_full_re.captures(card) {
-            parse_ali_price(cap.get(1).unwrap().as_str())
-        } else {
-            Decimal::ZERO
-        };
+        let price = price_full_re.captures(card)
+            .map_or(Decimal::ZERO, |cap| parse_ali_price(cap.get(1).unwrap().as_str()));
 
         if price == Decimal::ZERO {
             continue;
@@ -293,7 +292,10 @@ fn scrape_rendered_html(html: &str, max_results: usize) -> Vec<Product> {
 
         // Image
         let image = img_src_re.captures(card)
-            .map(|c| format!("https:{}", c.get(1).unwrap().as_str()));
+            .map(|c| {
+                let src = c.get(1).unwrap().as_str();
+                format!("https:{src}")
+            });
 
         let url = format!("https://pt.aliexpress.com/item/{product_id}.html");
 
@@ -311,7 +313,7 @@ fn scrape_rendered_html(html: &str, max_results: usize) -> Vec<Product> {
                 shipping_cost: None,
                 tax: TaxInfo {
                     remessa_conforme: true,
-                    taxes_included: true,
+                    taxes_included: false, // Search results show pre-tax prices
                     import_tax: None,
                     icms: None,
                     total_tax: Decimal::ZERO,
@@ -339,8 +341,7 @@ fn parse_ali_price(text: &str) -> Decimal {
     let cleaned: String = text
         .replace("R$", "")
         .replace("US$", "")
-        .replace("$", "")
-        .replace(" ", "");
+        .replace(['$', ' '], "");
 
     if cleaned.contains(',') {
         let normalized = cleaned.replace('.', "").replace(',', ".");

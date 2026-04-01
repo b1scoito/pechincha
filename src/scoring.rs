@@ -32,6 +32,7 @@ pub struct RelevanceScore {
 /// `gap_ratio` is the max price gap ratio from `price_cluster_scores()`.
 /// When there's a clear bimodal split (ratio > 3x), the cluster weight is
 /// boosted so that cheap accessories with misleading titles still get killed.
+#[must_use]
 pub fn score_product(title: &str, query: &str, cluster_score: f64, gap_ratio: f64) -> RelevanceScore {
     let s1 = title_structure_score(title, query);
     let s2 = cluster_score;
@@ -55,8 +56,8 @@ pub fn score_product(title: &str, query: &str, cluster_score: f64, gap_ratio: f6
     // At cluster 0.24 (40% MSRP) → dampen = 0.6: title contribution halved
     // At cluster ≥ 0.40 (60%+ MSRP) → dampen = 1.0: full title contribution
     let dampen = (s2 / 0.40).min(1.0);
-    let title_contribution = (s1 * w_structure + s3 * w_similarity) * dampen;
-    let total = title_contribution + s2 * w_cluster;
+    let title_contribution = s1.mul_add(w_structure, s3 * w_similarity) * dampen;
+    let total = s2.mul_add(w_cluster, title_contribution);
 
     RelevanceScore {
         total,
@@ -72,6 +73,7 @@ pub fn score_product(title: &str, query: &str, cluster_score: f64, gap_ratio: f6
 ///
 /// Products: "[QUERY] additional description" → high score
 /// Accessories: "replacement part for [QUERY]" → low score
+#[allow(clippy::cast_precision_loss)]
 fn title_structure_score(title: &str, query: &str) -> f64 {
     let title_norm = normalize(title);
     let query_norm = normalize(query);
@@ -109,7 +111,7 @@ fn title_structure_score(title: &str, query: &str) -> f64 {
     }
 
     // Token coverage: what fraction of query tokens were found
-    let coverage = found_count as f64 / tokens.len() as f64;
+    let coverage = f64::from(found_count) / tokens.len() as f64;
     if coverage < 1.0 {
         return coverage * 0.2;
     }
@@ -177,6 +179,8 @@ fn title_structure_score(title: &str, query: &str) -> f64 {
 ///
 /// Returns `(scores, gap_ratio)` where `scores` is a Vec in the same order
 /// as the input, and `gap_ratio` is the detected price separation ratio.
+#[must_use]
+#[allow(clippy::missing_panics_doc)]
 pub fn price_cluster_scores(prices: &[Decimal], msrp_brl: Option<f64>) -> (Vec<f64>, f64) {
     if prices.is_empty() {
         return (vec![], 1.0);
@@ -197,7 +201,7 @@ pub fn price_cluster_scores(prices: &[Decimal], msrp_brl: Option<f64>) -> (Vec<f
     if let Some(msrp) = msrp_brl {
         if msrp > 0.0 {
             let gap_ratio = {
-                let mut sorted = valid_prices.clone();
+                let mut sorted = valid_prices;
                 sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
                 if sorted.len() >= 4 {
                     let mut max_r = 1.0f64;
@@ -252,7 +256,7 @@ pub fn price_cluster_scores(prices: &[Decimal], msrp_brl: Option<f64>) -> (Vec<f
     // exist (e.g. cheap accessories, mid-range accessories, expensive products),
     // prefer the HIGHEST split point — the gap closest to the expensive cluster
     // is most likely the accessory/product boundary.
-    let mut sorted = valid_prices.clone();
+    let mut sorted = valid_prices;
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     let (product_min, product_max, detected_gap_ratio) = if sorted.len() >= 4 {
@@ -315,6 +319,7 @@ pub fn price_cluster_scores(prices: &[Decimal], msrp_brl: Option<f64>) -> (Vec<f
 // ── Signal 3: String Similarity ─────────────────────────────────────────────
 
 /// Score how similar the title is to the query using token-level comparison.
+#[allow(clippy::cast_precision_loss)]
 fn string_similarity_score(title: &str, query: &str) -> f64 {
     let title_norm = normalize(title);
     let query_norm = normalize(query);
@@ -339,7 +344,7 @@ fn string_similarity_score(title: &str, query: &str) -> f64 {
         let best = title_tokens
             .iter()
             .map(|tt| strsim::jaro_winkler(qt, tt))
-            .fold(0.0f64, |a, b| a.max(b));
+            .fold(0.0f64, f64::max);
         token_scores.push(best);
     }
 
@@ -363,6 +368,7 @@ fn string_similarity_score(title: &str, query: &str) -> f64 {
 
 /// Cheap pre-filter: all query tokens must appear in the title.
 /// Used before prices are available (for CDP fetch decisions).
+#[must_use]
 pub fn tokens_match(title: &str, query: &str) -> bool {
     let stop_words: &[&str] = &[
         "de", "do", "da", "dos", "das", "para", "com", "sem", "por", "em", "no", "na",
@@ -375,7 +381,7 @@ pub fn tokens_match(title: &str, query: &str) -> bool {
     let query_tokens: Vec<String> = normalize(query)
         .split_whitespace()
         .filter(|t| t.len() > 1 && !stop_words.contains(t))
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .collect();
 
     if query_tokens.is_empty() {
@@ -390,21 +396,13 @@ pub fn tokens_match(title: &str, query: &str) -> bool {
 /// Normalize text for comparison: lowercase, strip diacritics, split hyphens.
 fn normalize(s: &str) -> String {
     s.to_lowercase()
-        .replace('-', " ")
-        .replace('_', " ")
+        .replace(['-', '_'], " ")
         // Strip common Portuguese diacritics for comparison
-        .replace('á', "a")
-        .replace('à', "a")
-        .replace('ã', "a")
-        .replace('â', "a")
-        .replace('é', "e")
-        .replace('ê', "e")
+        .replace(['á', 'à', 'ã', 'â'], "a")
+        .replace(['é', 'ê'], "e")
         .replace('í', "i")
-        .replace('ó', "o")
-        .replace('ô', "o")
-        .replace('õ', "o")
-        .replace('ú', "u")
-        .replace('ü', "u")
+        .replace(['ó', 'ô', 'õ'], "o")
+        .replace(['ú', 'ü'], "u")
         .replace('ç', "c")
         .split_whitespace()
         .collect::<Vec<_>>()

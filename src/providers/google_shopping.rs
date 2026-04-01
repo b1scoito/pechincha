@@ -6,18 +6,26 @@ use scraper::{Html, Selector};
 use tracing::{debug, info};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, SellerInfo, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct GoogleShopping;
 
+impl Default for GoogleShopping {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl GoogleShopping {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 }
 
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for GoogleShopping {
     fn name(&self) -> &str {
         "Google Shopping"
@@ -42,6 +50,7 @@ impl Provider for GoogleShopping {
     }
 }
 
+#[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
 fn parse_google_shopping_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let document = Html::parse_document(html);
     let mut products = Vec::new();
@@ -98,8 +107,7 @@ fn parse_google_shopping_html(html: &str, max_results: usize) -> Result<Vec<Prod
 
         // Extract price from card text
         let price = price_re.captures(&card_text)
-            .map(|cap| parse_brl_price(cap.get(1).unwrap().as_str()))
-            .unwrap_or(Decimal::ZERO);
+            .map_or(Decimal::ZERO, |cap| parse_brl_price(cap.get(1).unwrap().as_str()));
 
         if price == Decimal::ZERO { continue; }
 
@@ -115,7 +123,7 @@ fn parse_google_shopping_html(html: &str, max_results: usize) -> Result<Vec<Prod
                         || href.contains("/shopping/product/")
                         || (href.starts_with("http") && !href.contains("google.com"))
                 })
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
                 .unwrap_or_default()
         };
 
@@ -220,8 +228,7 @@ fn parse_google_shopping_regex(html: &str, max_results: usize) -> Vec<Product> {
         let after = &html[h3_end..end];
 
         let price = price_re.captures(after)
-            .map(|c| parse_brl_price(c.get(1).unwrap().as_str()))
-            .unwrap_or(Decimal::ZERO);
+            .map_or(Decimal::ZERO, |c| parse_brl_price(c.get(1).unwrap().as_str()));
 
         if price == Decimal::ZERO { continue; }
 

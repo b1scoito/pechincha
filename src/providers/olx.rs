@@ -5,22 +5,30 @@ use rust_decimal::Decimal;
 use tracing::{debug, info};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, SellerInfo, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct Olx {
     client: Client,
 }
 
-impl Olx {
-    pub fn new() -> Self {
+impl Default for Olx {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(20),
         }
     }
 }
 
+impl Olx {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Olx {
     fn name(&self) -> &str {
         "OLX"
@@ -62,6 +70,7 @@ impl Provider for Olx {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
     let start = html
@@ -101,7 +110,7 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
                 // Fallback: parse "price" which may be "R$ 3.500"
                 ad["price"]
                     .as_str()
-                    .and_then(|s| parse_brl_price(s))
+                    .and_then(parse_brl_price)
             })
             .unwrap_or(Decimal::ZERO);
 
@@ -127,7 +136,7 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
                     .as_str()
                     .or_else(|| img["originalWebp"].as_str())
             })
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         let list_id = ad["listId"]
             .as_u64()
@@ -195,8 +204,7 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
 fn parse_brl_price(text: &str) -> Option<Decimal> {
     let cleaned: String = text
         .replace("R$", "")
-        .replace(" ", "")
-        .replace(".", "")
-        .replace(",", ".");
+        .replace([' ', '.'], "")
+        .replace(',', ".");
     cleaned.trim().parse().ok()
 }

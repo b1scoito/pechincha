@@ -6,18 +6,25 @@ use scraper::{Html, Selector};
 use tracing::{debug, warn};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct MercadoLivre {
     client: Client,
 }
 
-impl MercadoLivre {
-    pub fn new() -> Self {
+impl Default for MercadoLivre {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(20),
         }
+    }
+}
+
+impl MercadoLivre {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     async fn search_scraping(&self, query: &SearchQuery) -> Result<Vec<Product>, ProviderError> {
@@ -47,6 +54,7 @@ impl MercadoLivre {
     }
 }
 
+#[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
 fn parse_ml_html(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let document = Html::parse_document(html);
 
@@ -60,9 +68,8 @@ fn parse_ml_html(html: &str, _max_results: usize) -> Result<Vec<Product>, Provid
     let mut products = Vec::new();
 
     for card in document.select(&card_selector).take(50) {
-        let title_el = match card.select(&title_selector).next() {
-            Some(el) => el,
-            None => continue,
+        let Some(title_el) = card.select(&title_selector).next() else {
+            continue;
         };
 
         let title = title_el.text().collect::<String>();
@@ -91,8 +98,8 @@ fn parse_ml_html(html: &str, _max_results: usize) -> Result<Vec<Product>, Provid
         let image = card
             .select(&img_selector)
             .next()
-            .and_then(|el| el.value().attr("src").or(el.value().attr("data-src")))
-            .map(|s| s.to_string());
+            .and_then(|el| el.value().attr("src").or_else(|| el.value().attr("data-src")))
+            .map(std::string::ToString::to_string);
 
         let shipping_text = card
             .select(&shipping_selector)
@@ -157,6 +164,7 @@ fn parse_ml_html(html: &str, _max_results: usize) -> Result<Vec<Product>, Provid
 }
 
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for MercadoLivre {
     fn name(&self) -> &str {
         "Mercado Livre"

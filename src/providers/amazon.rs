@@ -6,22 +6,30 @@ use scraper::{Html, Selector};
 use tracing::{debug, info, warn};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct Amazon {
     client: Client,
 }
 
-impl Amazon {
-    pub fn new() -> Self {
+impl Default for Amazon {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(20),
         }
     }
 }
 
+impl Amazon {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Amazon {
     fn name(&self) -> &str {
         "Amazon BR"
@@ -72,6 +80,7 @@ impl Provider for Amazon {
     }
 }
 
+#[allow(clippy::similar_names, clippy::too_many_lines, clippy::unnecessary_wraps)]
 fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let document = Html::parse_document(html);
 
@@ -113,8 +122,7 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             .map(|el| {
                 el.text()
                     .collect::<String>()
-                    .replace('.', "")
-                    .replace(',', "")
+                    .replace(['.', ','], "")
                     .trim()
                     .to_string()
             })
@@ -123,8 +131,7 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
         let price_fraction = card
             .select(&price_fraction_selector)
             .next()
-            .map(|el| el.text().collect::<String>().trim().to_string())
-            .unwrap_or_else(|| "00".to_string());
+            .map_or_else(|| "00".to_string(), |el| el.text().collect::<String>().trim().to_string());
 
         // Keep zero-price products — they may have "Ver opções de compra" (See buying options).
         // Price can be fetched from the detail page later.
@@ -152,7 +159,7 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             .select(&img_selector)
             .next()
             .and_then(|el| el.value().attr("src"))
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         let rating = card.select(&rating_selector).next().and_then(|el| {
             let text = el.text().collect::<String>();
@@ -163,7 +170,7 @@ fn parse_amazon_br_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
 
         let review_count = card.select(&review_count_selector).next().and_then(|el| {
             let text = el.text().collect::<String>();
-            text.replace('.', "").replace(',', "").trim().parse::<u32>().ok()
+            text.replace(['.', ','], "").trim().parse::<u32>().ok()
         });
 
         let asin = card.value().attr("data-asin").unwrap_or("").to_string();

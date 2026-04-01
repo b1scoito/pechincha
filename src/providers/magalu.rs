@@ -3,24 +3,33 @@ use chrono::Utc;
 use wreq::Client;
 use rust_decimal::Decimal;
 use tracing::{debug, info};
+use regex_lite;
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, InstallmentInfo, PriceInfo, Product, ProductCondition, SearchQuery, SellerInfo, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct MagazineLuiza {
     client: Client,
 }
 
-impl MagazineLuiza {
-    pub fn new() -> Self {
+impl Default for MagazineLuiza {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(20),
         }
     }
 }
 
+impl MagazineLuiza {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for MagazineLuiza {
     fn name(&self) -> &str {
         "Magazine Luiza"
@@ -63,11 +72,14 @@ impl Provider for MagazineLuiza {
     }
 }
 
-fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
+#[allow(clippy::too_many_lines)]
+fn parse_next_data(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
-    let start = html
-        .find(marker)
-        .ok_or_else(|| ProviderError::Scraping("Magalu __NEXT_DATA__ not found".into()))?;
+    let Some(start) = html.find(marker) else {
+        // Fallback: try HTML scraping when __NEXT_DATA__ is absent
+        debug!("Magalu __NEXT_DATA__ not found, trying HTML fallback");
+        return parse_magalu_html(html, max_results);
+    };
     let json_start = start + marker.len();
     let json_end = html[json_start..]
         .find("</script>")
@@ -117,35 +129,38 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
         // Build URL from product slug
         let product_url = item["url"]
             .as_str()
-            .map(|u| {
-                if u.starts_with('/') {
-                    format!("https://www.magazineluiza.com.br{u}")
-                } else {
-                    u.to_string()
-                }
-            })
-            .unwrap_or_else(|| {
-                let slug = title
-                    .to_lowercase()
-                    .chars()
-                    .map(|c| if c.is_alphanumeric() { c } else { '-' })
-                    .collect::<String>();
-                format!(
-                    "https://www.magazineluiza.com.br/{}/{}/p/{}/",
-                    slug, "s", product_id
-                )
-            });
+            .map_or_else(
+                || {
+                    let slug = title
+                        .to_lowercase()
+                        .chars()
+                        .map(|c| if c.is_alphanumeric() { c } else { '-' })
+                        .collect::<String>();
+                    format!(
+                        "https://www.magazineluiza.com.br/{slug}/s/p/{product_id}/",
+                    )
+                },
+                |u| {
+                    if u.starts_with('/') {
+                        format!("https://www.magazineluiza.com.br{u}")
+                    } else {
+                        u.to_string()
+                    }
+                },
+            );
 
         // Image URL has {w}x{h} placeholder
         let image = item["image"]
             .as_str()
             .map(|s| s.replace("{w}x{h}", "300x300"));
 
+        #[allow(clippy::cast_possible_truncation)]
         let rating = item["rating"]["score"]
             .as_f64()
             .map(|r| r as f32)
             .filter(|r| *r > 0.0);
 
+        #[allow(clippy::cast_possible_truncation)]
         let review_count = item["rating"]["count"]
             .as_u64()
             .map(|n| n as u32);
@@ -199,6 +214,107 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
     Ok(products)
 }
 
+/// Fallback HTML parser for Magalu when `__NEXT_DATA__` is not available.
+/// Extracts products from rendered HTML using product card patterns.
+#[allow(clippy::unnecessary_wraps)]
+fn parse_magalu_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
+    let document = scraper::Html::parse_document(html);
+    let mut products = Vec::new();
+
+    // Magalu product cards: try multiple selector strategies
+    let card_sel = scraper::Selector::parse(
+        "[data-testid='product-card'], a[href*='/p/'], li[class*='product']"
+    ).unwrap();
+    let title_sel = scraper::Selector::parse("h2, [data-testid='product-title'], p").unwrap();
+    let link_sel = scraper::Selector::parse("a[href*='/p/']").unwrap();
+
+    let price_re = regex_lite::Regex::new(r"R\$\s*([\d.]+,\d{2})").unwrap();
+
+    let mut seen_urls = std::collections::HashSet::new();
+
+    for card in document.select(&card_sel).take(max_results * 3) {
+        if products.len() >= max_results { break; }
+
+        let text = card.text().collect::<String>();
+        if text.len() < 20 { continue; }
+
+        // Title: first h2/p with substantial text
+        let title = card.select(&title_sel)
+            .find_map(|el| {
+                let t = el.text().collect::<String>().trim().to_string();
+                if t.len() > 15 { Some(t) } else { None }
+            })
+            .unwrap_or_default();
+
+        if title.is_empty() { continue; }
+
+        // Price
+        let price = price_re.captures(&text)
+            .map_or(Decimal::ZERO, |cap| {
+                let s = cap.get(1).unwrap().as_str().replace('.', "").replace(',', ".");
+                s.parse::<Decimal>().unwrap_or(Decimal::ZERO)
+            });
+
+        if price == Decimal::ZERO { continue; }
+
+        // URL
+        let url = card.select(&link_sel).next()
+            .or_else(|| {
+                // If the card itself is a link
+                if card.value().name() == "a" { Some(card) } else { None }
+            })
+            .and_then(|el| el.value().attr("href"))
+            .map(|href| {
+                if href.starts_with('/') {
+                    format!("https://www.magazineluiza.com.br{href}")
+                } else {
+                    href.to_string()
+                }
+            })
+            .unwrap_or_default();
+
+        if url.is_empty() || !seen_urls.insert(url.clone()) { continue; }
+
+        products.push(Product {
+            provider: ProviderId::MagazineLuiza,
+            platform_id: String::new(),
+            title,
+            normalized_title: None,
+            url,
+            image_url: None,
+            price: PriceInfo {
+                listed_price: price,
+                currency: Currency::BRL,
+                price_brl: price,
+                shipping_cost: None,
+                tax: TaxInfo {
+                    remessa_conforme: false,
+                    taxes_included: true,
+                    import_tax: None,
+                    icms: None,
+                    total_tax: Decimal::ZERO,
+                    tax_regime: TaxRegime::Domestic,
+                },
+                total_cost: price,
+                original_price: None,
+                installments: None,
+            },
+            seller: None,
+            condition: ProductCondition::New,
+            rating: None,
+            review_count: None,
+            sold_count: None,
+            domestic: true,
+            fetched_at: Utc::now(),
+            keepa: Vec::new(),
+        });
+    }
+
+    info!(results = products.len(), "Magalu HTML fallback parsed");
+    Ok(products)
+}
+
+#[allow(clippy::cast_possible_truncation)]
 fn parse_installment(v: &serde_json::Value) -> Option<InstallmentInfo> {
     let count = v["quantity"].as_u64()? as u8;
     let amount: Decimal = v["amount"].as_str()?.parse().ok()?;

@@ -5,22 +5,30 @@ use scraper::{Html, Selector};
 use tracing::{debug, info};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct Ebay {
     client: wreq::Client,
 }
 
-impl Ebay {
-    pub fn new() -> Self {
+impl Default for Ebay {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(15),
         }
     }
 }
 
+impl Ebay {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Ebay {
     fn name(&self) -> &str {
         "eBay"
@@ -65,6 +73,7 @@ impl Provider for Ebay {
     }
 }
 
+#[allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
 fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let document = Html::parse_document(html);
     let mut products = Vec::new();
@@ -101,9 +110,9 @@ fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
             .or_else(|| {
                 // Fallback: first line of card text
                 text.lines()
-                    .map(|l| l.trim())
+                    .map(str::trim)
                     .find(|l| l.len() > 15 && !l.starts_with("R$") && !l.starts_with("US"))
-                    .map(|s| s.to_string())
+                    .map(std::string::ToString::to_string)
             })
             .unwrap_or_default();
 
@@ -130,7 +139,7 @@ fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
         // URL
         let url = card.select(&link_sel).next()
             .and_then(|el| el.value().attr("href"))
-            .map(|s| s.to_string())
+            .map(std::string::ToString::to_string)
             .unwrap_or_default();
 
         if url.is_empty() { continue; }
@@ -138,7 +147,7 @@ fn parse_ebay_html(html: &str, max_results: usize) -> Result<Vec<Product>, Provi
         // Image
         let image = card.select(&img_sel).next()
             .and_then(|el| el.value().attr("src").or_else(|| el.value().attr("data-src")))
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         // Condition from card text
         let text_lower = text.to_lowercase();

@@ -1,6 +1,8 @@
 pub mod aliexpress;
 pub mod amazon;
 pub mod amazon_us;
+pub mod ebay;
+pub mod google_shopping;
 pub mod kabum;
 pub mod magalu;
 pub mod mercadolivre;
@@ -25,10 +27,13 @@ pub enum ProviderId {
     Kabum,
     MagazineLuiza,
     Olx,
+    GoogleShopping,
+    Ebay,
 }
 
 impl ProviderId {
-    pub fn all() -> &'static [ProviderId] {
+    #[must_use]
+    pub const fn all() -> &'static [Self] {
         &[
             Self::MercadoLivre,
             Self::AliExpress,
@@ -38,6 +43,8 @@ impl ProviderId {
             Self::Kabum,
             Self::MagazineLuiza,
             Self::Olx,
+            Self::GoogleShopping,
+            Self::Ebay,
         ]
     }
 }
@@ -53,6 +60,8 @@ impl fmt::Display for ProviderId {
             Self::Kabum => write!(f, "Kabum"),
             Self::MagazineLuiza => write!(f, "Magazine Luiza"),
             Self::Olx => write!(f, "OLX"),
+            Self::GoogleShopping => write!(f, "Google Shopping"),
+            Self::Ebay => write!(f, "eBay"),
         }
     }
 }
@@ -70,12 +79,15 @@ impl std::str::FromStr for ProviderId {
             "kabum" => Ok(Self::Kabum),
             "magalu" | "magazineluiza" | "magazine_luiza" => Ok(Self::MagazineLuiza),
             "olx" => Ok(Self::Olx),
+            "google" | "gshopping" | "google_shopping" | "googleshopping" => Ok(Self::GoogleShopping),
+            "ebay" => Ok(Self::Ebay),
             _ => Err(format!("unknown provider: {s}")),
         }
     }
 }
 
 #[async_trait]
+#[allow(clippy::missing_errors_doc, clippy::unnecessary_literal_bound)]
 pub trait Provider: Send + Sync {
     fn name(&self) -> &str;
     fn id(&self) -> ProviderId;
@@ -85,7 +97,8 @@ pub trait Provider: Send + Sync {
     async fn search(&self, query: &SearchQuery) -> Result<Vec<Product>, ProviderError>;
 
     /// CDP mode: parse pre-fetched HTML from the real browser.
-    /// Default implementation calls search() as fallback.
+    /// Default implementation calls `search()` as fallback.
+    #[allow(clippy::missing_errors_doc)]
     fn parse_html(&self, _html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
         // Default: providers that haven't implemented parse_html yet
         Err(ProviderError::Parse("parse_html not implemented for this provider".into()))

@@ -21,6 +21,7 @@ struct CachedRate {
 }
 
 impl ExchangeRateService {
+    #[must_use]
     pub fn new(client: Client) -> Self {
         Self {
             client,

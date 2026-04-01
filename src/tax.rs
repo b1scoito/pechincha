@@ -22,6 +22,7 @@ impl TaxCalculator {
     /// - `remessa_conforme`: Whether the platform participates in Remessa Conforme
     /// - `taxes_already_included`: Whether the platform already includes taxes in the displayed price
     /// - `exchange_rate`: Current USD/BRL exchange rate
+    #[must_use]
     pub fn calculate(
         price_usd: Option<Decimal>,
         price_brl: Decimal,

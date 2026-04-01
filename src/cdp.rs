@@ -11,6 +11,54 @@ use tracing::{debug, error, info, warn};
 use crate::error::ProviderError;
 use crate::providers::ProviderId;
 
+/// Close all non-essential tabs (anything that's not the user's original pages).
+/// Call this after a search completes to clean up any leaked tabs.
+pub async fn cleanup_tabs(cdp_port: u16) {
+    let Ok(client) = wreq::Client::builder().build() else { return };
+    let targets: Vec<serde_json::Value> = match client
+        .get(format!("http://127.0.0.1:{cdp_port}/json/list"))
+        .send().await
+    {
+        Ok(r) => r.json().await.unwrap_or_default(),
+        Err(_) => return,
+    };
+
+    for t in &targets {
+        let url = t["url"].as_str().unwrap_or("");
+        let tab_type = t["type"].as_str().unwrap_or("");
+        if tab_type != "page" { continue; }
+
+        // Close tabs that are clearly from our search (provider URLs, detail pages, Keepa)
+        let should_close = url.contains("keepa.com")
+            || url.contains("lista.mercadolivre.com.br")
+            || url.contains("pt.aliexpress.com/")
+            || url.contains("shopee.com.br/search")
+            || url.contains("amazon.com/s?k=")
+            || url.contains("amazon.com.br/s?k=")
+            || url.contains("amazon.com/dp/")
+            || url.contains("amazon.com.br/dp/")
+            || url.contains("amazon.com.br/gp/")
+            || (url.contains("amazon.com/") && url.contains("/dp/"))
+            || (url.contains("amazon.com/") && url.contains("/ref=sr_"))
+            || url.contains("kabum.com.br/busca/")
+            || url.contains("magazineluiza.com.br/busca/")
+            || (url.contains("magazineluiza.com.br/") && url.contains("/s/p/"))
+            || url.contains("olx.com.br/")
+            || url.contains("google.com.br/search")
+            || url.contains("google.com/search")
+            || url.contains("ebay.com/sch/")
+            || url.contains("ebay.com/itm/");
+
+        if should_close {
+            if let Some(id) = t["id"].as_str() {
+                let _ = client.get(format!("http://127.0.0.1:{cdp_port}/json/close/{id}"))
+                    .send().await;
+                debug!(url = &url[..url.len().min(80)], "Cleaned up tab");
+            }
+        }
+    }
+}
+
 /// How long to wait for initial page render after navigation.
 const RENDER_WAIT: Duration = Duration::from_secs(5);
 /// How long to wait after scrolling for more content to load.
@@ -35,7 +83,7 @@ async fn get_browser(cdp_port: u16) -> Result<Arc<Browser>, String> {
 
             // Spawn handler to process CDP events
             tokio::spawn(async move {
-                while let Some(_) = handler.next().await {}
+                while handler.next().await.is_some() {}
             });
 
             info!(port = cdp_port, "Connected to browser via CDP");
@@ -46,6 +94,7 @@ async fn get_browser(cdp_port: u16) -> Result<Arc<Browser>, String> {
 }
 
 /// Search URL for each provider.
+#[must_use]
 pub fn search_url(provider: ProviderId, query: &str) -> String {
     let q = urlencoding::encode(query);
     match provider {
@@ -57,6 +106,8 @@ pub fn search_url(provider: ProviderId, query: &str) -> String {
         ProviderId::Kabum => format!("https://www.kabum.com.br/busca/{}", query.replace(' ', "-")),
         ProviderId::MagazineLuiza => format!("https://www.magazineluiza.com.br/busca/{q}/"),
         ProviderId::Olx => format!("https://www.olx.com.br/brasil?q={q}"),
+        ProviderId::GoogleShopping => format!("https://www.google.com.br/search?tbm=shop&q={q}"),
+        ProviderId::Ebay => format!("https://www.ebay.com/sch/i.html?_nkw={q}&_sacat=0&LH_PrefLoc=3&_sop=15"),
     }
 }
 
@@ -65,13 +116,10 @@ pub async fn fetch_amazon_br_price(cdp_port: u16, product_url: &str) -> Option<r
     debug!("Amazon BR price: fetching {}", product_url);
     let browser = get_browser(cdp_port).await.ok()?;
 
-    let page = match tokio::time::timeout(
+    let Ok(Ok(page)) = tokio::time::timeout(
         Duration::from_secs(10),
         browser.new_page(product_url)
-    ).await {
-        Ok(Ok(p)) => p,
-        _ => { warn!("Amazon BR detail page open timed out"); return None; }
-    };
+    ).await else { warn!("Amazon BR detail page open timed out"); return None; };
 
     tokio::time::sleep(Duration::from_secs(5)).await;
 
@@ -114,10 +162,14 @@ pub async fn fetch_amazon_br_price(cdp_port: u16, product_url: &str) -> Option<r
 }
 
 /// Fetch a single page via CDP — opens a new tab, navigates, waits, extracts HTML, closes tab.
+///
+/// # Errors
+///
+/// Returns `ProviderError::Browser` if the browser connection or page fetch fails.
 pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderError> {
     let browser = get_browser(cdp_port)
         .await
-        .map_err(|e| ProviderError::Browser(e))?;
+        .map_err(ProviderError::Browser)?;
 
     let page = browser
         .new_page(url)
@@ -139,31 +191,28 @@ pub async fn fetch_page(cdp_port: u16, url: &str) -> Result<String, ProviderErro
     Ok(html)
 }
 
-/// Fetch AliExpress product page and extract the exact tax amount.
-/// AliExpress shows "R$X.XXX,XX+ em impostos estimados" on product pages.
+/// Fetch `AliExpress` product page and extract the exact tax amount.
+/// `AliExpress` shows "R$X.XXX,XX+ em impostos estimados" on product pages.
 pub async fn fetch_aliexpress_tax(cdp_port: u16, product_url: &str) -> Option<rust_decimal::Decimal> {
     debug!("AliExpress tax: fetching {}", product_url);
     let browser = get_browser(cdp_port).await.ok()?;
 
-    let page = match tokio::time::timeout(
+    let Ok(Ok(page)) = tokio::time::timeout(
         Duration::from_secs(10),
         browser.new_page(product_url)
-    ).await {
-        Ok(Ok(p)) => p,
-        _ => { warn!("AliExpress tax: page open timed out"); return None; }
-    };
+    ).await else { warn!("AliExpress tax: page open timed out"); return None; };
 
     // Wait for page to render
     tokio::time::sleep(Duration::from_secs(3)).await;
 
     // Extract tax amount from page text
-    let js = r#"
+    let js = r"
         (function() {
             var text = document.body.innerText;
             var match = text.match(/R\$([\d.]+,\d{2})\+?\s*em\s*impostos\s*estimados/i);
             return match ? match[1] : null;
         })()
-    "#;
+    ";
 
     let tax_str = page.evaluate(js).await.ok()
         .and_then(|v| v.into_value::<Option<String>>().ok())
@@ -195,6 +244,7 @@ pub struct AmazonUsDetails {
 }
 
 /// Fetch Amazon US product detail page and extract price, shipping, and MSRP.
+#[allow(clippy::too_many_lines)]
 pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option<AmazonUsDetails> {
     debug!("Amazon US detail: connecting...");
     let browser = get_browser(cdp_port).await.ok()?;
@@ -215,7 +265,7 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
     // Click "Details" to expand shipping breakdown (with timeout)
     debug!("Amazon US detail: clicking Details...");
     let _ = tokio::time::timeout(Duration::from_secs(5), page.evaluate(
-        r#"(() => {
+        r"(() => {
             const links = document.querySelectorAll('a, span');
             for (const el of links) {
                 const text = (el.textContent || '').trim();
@@ -224,7 +274,7 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
                     break;
                 }
             }
-        })()"#
+        })()"
     )).await;
     tokio::time::sleep(Duration::from_secs(2)).await;
 
@@ -362,9 +412,7 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
         .as_str()
         .and_then(|s| s.replace(',', "").parse().ok());
 
-    let shipping_import = if let Some(combined) = data["combined"].as_str() {
-        combined.replace(',', "").parse::<rust_decimal::Decimal>().ok()
-    } else {
+    let shipping_import = data["combined"].as_str().map_or_else(|| {
         let shipping: rust_decimal::Decimal = data["shipping"].as_str()
             .and_then(|s| s.replace(',', "").parse().ok())
             .unwrap_or_default();
@@ -373,10 +421,10 @@ pub async fn fetch_amazon_us_details(cdp_port: u16, product_url: &str) -> Option
             .unwrap_or_default();
         let total = shipping + import;
         if total > rust_decimal::Decimal::ZERO { Some(total) } else { None }
-    };
+    }, |combined| combined.replace(',', "").parse::<rust_decimal::Decimal>().ok());
 
-    let sold_by = data["soldBy"].as_str().map(|s| s.to_string());
-    let ships_from = data["shipsFrom"].as_str().map(|s| s.to_string());
+    let sold_by = data["soldBy"].as_str().map(std::string::ToString::to_string);
+    let ships_from = data["shipsFrom"].as_str().map(std::string::ToString::to_string);
 
     Some(AmazonUsDetails { product_price, shipping_import, msrp, sold_by, ships_from })
 }
@@ -448,11 +496,12 @@ pub async fn fetch_pages(
 
                 let html = page
                     .content()
-                    .await
-                    .map_err(|e| ProviderError::Browser(format!("Content failed: {e}")))?;
+                    .await;
 
+                // Always close the tab, even if content extraction failed
                 let _ = page.close().await;
-                Ok(html)
+
+                html.map_err(|e| ProviderError::Browser(format!("Content failed: {e}")))
             }
             .await;
 

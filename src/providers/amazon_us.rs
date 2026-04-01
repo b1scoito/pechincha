@@ -6,22 +6,30 @@ use scraper::{Html, Selector};
 use tracing::{debug, info};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, PriceInfo, Product, ProductCondition, SearchQuery, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct AmazonUS {
     client: Client,
 }
 
-impl AmazonUS {
-    pub fn new() -> Self {
+impl Default for AmazonUS {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(20),
         }
     }
 }
 
+impl AmazonUS {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for AmazonUS {
     fn name(&self) -> &str {
         "Amazon US"
@@ -72,6 +80,7 @@ impl Provider for AmazonUS {
     }
 }
 
+#[allow(clippy::similar_names, clippy::too_many_lines, clippy::unnecessary_wraps)]
 fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let document = Html::parse_document(html);
 
@@ -128,10 +137,7 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             });
 
         // Skip sponsored ads — they have link="#" and no real product page
-        let url = match link {
-            Some(l) => l,
-            None => format!("https://www.amazon.com/dp/{asin}"),
-        };
+        let url = link.unwrap_or_else(|| format!("https://www.amazon.com/dp/{asin}"));
 
         // Sponsored ads typically have "#" links — check if this is one
         let card_html = card.html();
@@ -147,8 +153,7 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             .map(|el| {
                 el.text()
                     .collect::<String>()
-                    .replace(',', "")
-                    .replace('.', "")
+                    .replace([',', '.'], "")
                     .trim()
                     .to_string()
             })
@@ -157,8 +162,7 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
         let price_fraction = card
             .select(&price_fraction_selector)
             .next()
-            .map(|el| el.text().collect::<String>().trim().to_string())
-            .unwrap_or_else(|| "00".to_string());
+            .map_or_else(|| "00".to_string(), |el| el.text().collect::<String>().trim().to_string());
 
         let price_usd: Decimal = if price_whole.is_empty() {
             Decimal::ZERO // Will be fetched from detail page
@@ -170,7 +174,7 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
             .select(&img_selector)
             .next()
             .and_then(|el| el.value().attr("src"))
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
         let rating = card.select(&rating_selector).next().and_then(|el| {
             let text = el.text().collect::<String>();
@@ -181,7 +185,7 @@ fn parse_amazon_us_html(html: &str, _max_results: usize) -> Result<Vec<Product>,
 
         let review_count = card.select(&review_count_selector).next().and_then(|el| {
             let text = el.text().collect::<String>();
-            text.replace(',', "").replace('.', "").trim().parse::<u32>().ok()
+            text.replace([',', '.'], "").trim().parse::<u32>().ok()
         });
 
         // Skip impossibly cheap prices (likely parsing errors)

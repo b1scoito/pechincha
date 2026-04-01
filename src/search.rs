@@ -7,7 +7,10 @@ use tracing::{debug, error, info, warn};
 use crate::config::PechinchaConfig;
 use crate::currency::ExchangeRateService;
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{
+    Currency, Product, ProductCondition, SearchQuery, SearchResults,
+    SortOrder, TaxInfo, TaxRegime,
+};
 use crate::providers::{Provider, ProviderId};
 use crate::scoring::{self, RelevanceScore, KEEPA_CANDIDATE_THRESHOLD, RELEVANT_THRESHOLD};
 use crate::tax::TaxCalculator;
@@ -20,6 +23,7 @@ pub struct SearchOrchestrator {
 }
 
 impl SearchOrchestrator {
+    #[must_use]
     pub fn from_config(config: &PechinchaConfig) -> Self {
         let cdp_port = config.general.cdp_port;
         let mut providers: Vec<Arc<dyn Provider>> = Vec::new();
@@ -83,6 +87,7 @@ impl SearchOrchestrator {
         }
     }
 
+    #[allow(clippy::similar_names, clippy::too_many_lines)]
     pub async fn search(&self, query: &SearchQuery) -> SearchResults {
         let start = Instant::now();
 
@@ -308,6 +313,7 @@ impl SearchOrchestrator {
                 // Apply average tax ratio to ALL remaining AliExpress products
                 // (regardless of taxes_included flag — search results never include tax)
                 if !ali_tax_ratios.is_empty() {
+                    #[allow(clippy::cast_possible_truncation)]
                     let avg_ratio = ali_tax_ratios.iter().sum::<Decimal>()
                         / Decimal::from(ali_tax_ratios.len() as u32);
                     info!(avg_ratio = %avg_ratio, samples = ali_tax_ratios.len(), "AliExpress tax ratio");
@@ -462,7 +468,7 @@ impl SearchOrchestrator {
                     // Median of all available MSRPs gives a robust reference.
                     let msrp = {
                         let mut msrp_usd_values: Vec<Decimal> = insights.iter()
-                            .filter_map(|k| k.msrp_usd())
+                            .filter_map(crate::keepa::KeepaInsight::msrp_usd)
                             .filter(|&m| m > Decimal::ZERO)
                             .collect();
                         msrp_usd_values.sort();
@@ -509,14 +515,14 @@ impl SearchOrchestrator {
 
                     // Attach Keepa data to products matching the effective ASIN
                     // (could be the original BR ASIN or the US fallback)
-                    for product in all_products.iter_mut() {
+                    for product in &mut all_products {
                         if product.platform_id != effective_asin
                             && product.platform_id != *best_asin
                         {
                             continue;
                         }
 
-                        product.keepa = insights.clone();
+                        product.keepa.clone_from(&insights);
 
                         if let Some(m) = msrp {
                             product.price.original_price = Some(m);
@@ -543,17 +549,17 @@ impl SearchOrchestrator {
                     });
 
                     if !has_msrp {
-                        let detail_asin = if effective_asin != *best_asin {
-                            &effective_asin
-                        } else {
+                        let detail_asin = if effective_asin == *best_asin {
                             best_asin
+                        } else {
+                            &effective_asin
                         };
-                        info!("No Keepa MSRP, fetching detail page for {}", detail_asin);
-                        let url = format!("https://www.amazon.com/dp/{}", detail_asin);
+                        info!("No Keepa MSRP, fetching detail page for {detail_asin}");
+                        let url = format!("https://www.amazon.com/dp/{detail_asin}");
                         if let Some(details) = crate::cdp::fetch_amazon_us_details(cdp_port, &url).await {
                             if let Some(msrp) = details.msrp {
                                 info!(asin = %detail_asin, msrp = %msrp, "MSRP from detail page");
-                                for product in all_products.iter_mut() {
+                                for product in &mut all_products {
                                     if product.platform_id == *detail_asin
                                         || product.platform_id == *best_asin
                                     {
@@ -571,7 +577,7 @@ impl SearchOrchestrator {
         // Fill missing prices from Keepa buy_box data.
         // This handles Amazon BR products with "Ver opções de compra" where
         // detail page extraction failed but Keepa has the real price.
-        for product in all_products.iter_mut() {
+        for product in &mut all_products {
             if product.price.listed_price == Decimal::ZERO && !product.keepa.is_empty() {
                 let own_domain = if product.provider == ProviderId::Amazon {
                     crate::keepa::DOMAIN_BR
@@ -580,7 +586,7 @@ impl SearchOrchestrator {
                 };
                 if let Some(keepa_price) = product.keepa.iter()
                     .find(|k| k.domain == own_domain)
-                    .and_then(|k| k.best_new_price())
+                    .and_then(crate::keepa::KeepaInsight::best_new_price)
                 {
                     info!(
                         asin = %product.platform_id,
@@ -638,8 +644,7 @@ impl SearchOrchestrator {
             // Step 2: compute price cluster scores, anchored by MSRP when available
             let msrp_brl: Option<f64> = all_products.iter()
                 .filter(|p| !p.keepa.is_empty())
-                .filter_map(|p| p.price.original_price)
-                .next()
+                .find_map(|p| p.price.original_price)
                 .map(|msrp_usd| {
                     let brl = msrp_usd * exchange_rate;
                     brl.to_string().parse::<f64>().unwrap_or(0.0)
@@ -714,10 +719,10 @@ impl SearchOrchestrator {
         // Sort
         match query.sort {
             SortOrder::TotalCost | SortOrder::PriceAsc => {
-                all_products.sort_by(|a, b| a.price.total_cost.cmp(&b.price.total_cost));
+                all_products.sort_by_key(|p| p.price.total_cost);
             }
             SortOrder::PriceDesc => {
-                all_products.sort_by(|a, b| b.price.total_cost.cmp(&a.price.total_cost));
+                all_products.sort_by_key(|p| std::cmp::Reverse(p.price.total_cost));
             }
             SortOrder::Rating => {
                 all_products.sort_by(|a, b| {
@@ -779,7 +784,7 @@ impl SearchOrchestrator {
 
 /// Deduplicate products: remove near-identical listings from the same platform.
 /// Products are considered duplicates when:
-/// 1. Same platform + same platform_id (ASIN) — exact duplicate
+/// 1. Same platform + same `platform_id` (ASIN) — exact duplicate
 /// 2. Same platform + normalized title matches — same product, different sellers
 ///
 /// Already sorted by price, so first seen = cheapest = the one we keep.

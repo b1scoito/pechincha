@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PechinchaConfig {
     #[serde(default)]
     pub general: GeneralConfig,
@@ -17,11 +17,14 @@ pub struct GeneralConfig {
     pub results_per_provider: usize,
     #[serde(default = "default_timeout")]
     pub timeout_seconds: u64,
-    /// Chrome DevTools Protocol port for connecting to your real browser.
-    /// Launch browser with: chromium --remote-debugging-port=9222
-    /// Used by Shopee and AliExpress which require a real browser session.
+    /// Chrome `DevTools` Protocol port for connecting to your real browser.
+    /// Launch browser with: `chromium --remote-debugging-port=9222`
+    /// Used by Shopee and `AliExpress` which require a real browser session.
     #[serde(default)]
     pub cdp_port: Option<u16>,
+    /// Cache TTL in minutes (0 to disable). Default: 30.
+    #[serde(default = "default_cache_ttl")]
+    pub cache_ttl_minutes: u64,
 }
 
 impl Default for GeneralConfig {
@@ -31,6 +34,7 @@ impl Default for GeneralConfig {
             results_per_provider: default_results_per_provider(),
             timeout_seconds: default_timeout(),
             cdp_port: None,
+            cache_ttl_minutes: default_cache_ttl(),
         }
     }
 }
@@ -38,11 +42,19 @@ impl Default for GeneralConfig {
 fn default_sort() -> String {
     "total-cost".to_string()
 }
-fn default_results_per_provider() -> usize {
+const fn default_results_per_provider() -> usize {
     5
 }
-fn default_timeout() -> u64 {
+const fn default_timeout() -> u64 {
     30
+}
+const fn default_cache_ttl() -> u64 {
+    30
+}
+/// Google Shopping disabled by default — redundant with ML/Amazon/Magalu/Kabum
+/// and shows misleading prices (import prices displayed as BRL without tax).
+const fn default_google_shopping() -> ProviderConfig {
+    ProviderConfig { enabled: false }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -63,6 +75,10 @@ pub struct ProvidersConfig {
     pub magalu: ProviderConfig,
     #[serde(default)]
     pub olx: ProviderConfig,
+    #[serde(default = "default_google_shopping")]
+    pub google_shopping: ProviderConfig,
+    #[serde(default)]
+    pub ebay: ProviderConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -77,11 +93,12 @@ impl Default for ProviderConfig {
     }
 }
 
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Default: `enabled=false` (requires Affiliate API or remote browser CDP)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct AliExpressConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -93,18 +110,8 @@ pub struct AliExpressConfig {
     pub tracking_id: Option<String>,
 }
 
-impl Default for AliExpressConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false, // Disabled: requires Affiliate API or remote browser CDP
-            api_key: None,
-            app_secret: None,
-            tracking_id: None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Default: `enabled=false` (requires Affiliate API or remote browser CDP)
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ShopeeConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
@@ -112,16 +119,6 @@ pub struct ShopeeConfig {
     pub app_id: Option<String>,
     #[serde(default)]
     pub secret: Option<String>,
-}
-
-impl Default for ShopeeConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false, // Disabled: requires Affiliate API or remote browser CDP
-            app_id: None,
-            secret: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -148,10 +145,10 @@ impl Default for AmazonConfig {
 }
 
 impl PechinchaConfig {
+    #[allow(clippy::missing_errors_doc)]
     pub fn load(path: Option<&Path>) -> Result<Self, String> {
         let config_path = path
-            .map(PathBuf::from)
-            .unwrap_or_else(default_config_path);
+            .map_or_else(default_config_path, PathBuf::from);
 
         if config_path.exists() {
             let contents = std::fs::read_to_string(&config_path)
@@ -163,24 +160,18 @@ impl PechinchaConfig {
         }
     }
 
-    pub fn default() -> Self {
-        Self {
-            general: GeneralConfig::default(),
-            providers: ProvidersConfig::default(),
-        }
-    }
-
     /// Generate a template config file.
+    #[must_use]
     pub fn template() -> String {
         let default = Self::default();
         toml::to_string_pretty(&default).unwrap_or_default()
     }
 
     /// Save config to the default path, creating directories if needed.
+    #[allow(clippy::missing_errors_doc)]
     pub fn save(&self, path: Option<&Path>) -> Result<(), String> {
         let config_path = path
-            .map(PathBuf::from)
-            .unwrap_or_else(default_config_path);
+            .map_or_else(default_config_path, PathBuf::from);
 
         if let Some(parent) = config_path.parent() {
             std::fs::create_dir_all(parent)
@@ -197,6 +188,7 @@ impl PechinchaConfig {
     }
 }
 
+#[must_use]
 pub fn default_config_path() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))

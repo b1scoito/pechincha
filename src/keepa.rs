@@ -7,7 +7,7 @@
 //! CSV types come in two formats:
 //!   - Pairs:    [timestamp, price, timestamp, price, ...]
 //!   - Triplets: [timestamp, price, shipping, timestamp, price, shipping, ...]
-//!     (used by _SHIPPING types like BUY_BOX_SHIPPING, NEW_FBM_SHIPPING, etc.)
+//!     (used by _SHIPPING types like `BUY_BOX_SHIPPING`, `NEW_FBM_SHIPPING`, etc.)
 
 use base64::Engine;
 use futures::{SinkExt, StreamExt};
@@ -15,6 +15,30 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use tokio_tungstenite::connect_async;
 use tracing::{debug, info, warn};
+
+// ── Keepa timestamp epoch ────────────────────────────────────────────────────
+// Keepa timestamps are minutes since 2011-01-01T00:00:00Z
+const KEEPA_EPOCH_MINUTES: i64 = 21_564_000; // Unix minutes at 2011-01-01
+
+/// Price trend direction based on recent vs historical prices.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PriceTrend {
+    Rising,
+    Falling,
+    Stable,
+}
+
+impl PriceTrend {
+    #[must_use]
+    pub const fn arrow(&self) -> &'static str {
+        match self {
+            Self::Rising => "↑",
+            Self::Falling => "↓",
+            Self::Stable => "→",
+        }
+    }
+}
 
 // ── CSV indices (pair format: [timestamp, price, ...]) ──────────────────────
 
@@ -105,61 +129,87 @@ pub struct KeepaInsight {
 
     // ── Sales rank ──────────────────────────────────────────────────────
     pub sales_rank: Option<i64>,
+
+    // ── Price trend ───────────────────────────────────────────────────
+    /// Buy box price trend (recent 7d vs prior 30d)
+    pub trend: Option<PriceTrend>,
 }
 
 impl KeepaInsight {
-    fn cents_to_decimal(cents: i64) -> Decimal {
-        Decimal::from(cents) / Decimal::from(100)
+    /// Convert Keepa's stored price to the display value.
+    /// Most currencies store in cents (divide by 100).
+    /// JPY stores in yen directly (no subunit).
+    fn cents_to_decimal_for_domain(cents: i64, domain: u8) -> Decimal {
+        match domain {
+            5 => Decimal::from(cents),  // JPY — no subunit, stored as yen
+            _ => Decimal::from(cents) / Decimal::from(100),
+        }
     }
 
+
+    #[must_use]
     pub fn msrp(&self) -> Option<Decimal> {
-        self.list_price.map(Self::cents_to_decimal)
+        self.list_price.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
+    /// MSRP converted to USD for cross-domain comparison.
+    #[must_use]
+    pub fn msrp_usd(&self) -> Option<Decimal> {
+        self.msrp().map(|p| p * self.currency_to_usd())
+    }
+
+    #[must_use]
     pub fn amazon(&self) -> Option<Decimal> {
-        self.amazon_price.map(Self::cents_to_decimal)
+        self.amazon_price.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
+    #[must_use]
     pub fn amazon_low_price(&self) -> Option<Decimal> {
-        self.amazon_low.map(Self::cents_to_decimal)
+        self.amazon_low.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
+    #[must_use]
     pub fn buy_box(&self) -> Option<Decimal> {
-        self.buy_box_price.map(Self::cents_to_decimal)
+        self.buy_box_price.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
-    /// Buy Box total = price + shipping (already combined in the triplet's getLast logic)
+    /// Buy Box total = price + shipping
+    #[must_use]
     pub fn buy_box_total(&self) -> Option<Decimal> {
         let price = self.buy_box_price?;
         let shipping = self.buy_box_shipping.unwrap_or(0).max(0);
-        Some(Self::cents_to_decimal(price + shipping))
+        Some(Self::cents_to_decimal_for_domain(price + shipping, self.domain))
     }
 
+    #[must_use]
     pub fn warehouse(&self) -> Option<Decimal> {
-        self.warehouse_price.map(Self::cents_to_decimal)
+        self.warehouse_price.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
+    #[must_use]
     pub fn refurbished(&self) -> Option<Decimal> {
-        self.refurbished_price.map(Self::cents_to_decimal)
+        self.refurbished_price.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
+    #[must_use]
     pub fn fba(&self) -> Option<Decimal> {
-        self.fba_price.map(Self::cents_to_decimal)
+        self.fba_price.map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
-    /// Best available new price: buy box > amazon > fba > new_3p
+    /// Best available new price: buy box > amazon > fba > `new_3p`
+    #[must_use]
     pub fn best_new_price(&self) -> Option<Decimal> {
         self.buy_box_price
             .or(self.amazon_price)
             .or(self.fba_price)
             .or(self.new_3p_price)
-            .map(Self::cents_to_decimal)
+            .map(|c| Self::cents_to_decimal_for_domain(c, self.domain))
     }
 
     /// Domain TLD for display
-    pub fn domain_tld(&self) -> &'static str {
+    #[must_use]
+    pub const fn domain_tld(&self) -> &'static str {
         match self.domain {
-            1 => ".com",
             2 => ".co.uk",
             3 => ".de",
             4 => ".fr",
@@ -176,11 +226,10 @@ impl KeepaInsight {
 
     /// Approximate exchange rate from this domain's currency to USD.
     /// Used to normalize international prices for comparison.
-    fn currency_to_usd(&self) -> Decimal {
+    const fn currency_to_usd(&self) -> Decimal {
         // Approximate rates — good enough for comparison ranking.
         // US, CA, MX use dollars/pesos; EU uses EUR; UK uses GBP; JP uses JPY; IN uses INR; BR uses BRL
         match self.domain {
-            1 => Decimal::ONE,                                          // USD
             2 => rust_decimal_macros::dec!(1.27),                       // GBP → USD
             3 | 4 | 8 | 9 => rust_decimal_macros::dec!(1.08),          // EUR → USD
             5 => rust_decimal_macros::dec!(0.0067),                     // JPY → USD
@@ -193,22 +242,26 @@ impl KeepaInsight {
     }
 
     /// Best new price converted to USD for cross-domain comparison.
+    #[must_use]
     pub fn best_new_price_usd(&self) -> Option<Decimal> {
         self.best_new_price().map(|p| p * self.currency_to_usd())
     }
 
     /// Warehouse price converted to USD.
+    #[must_use]
     pub fn warehouse_usd(&self) -> Option<Decimal> {
         self.warehouse().map(|p| p * self.currency_to_usd())
     }
 
     /// Refurbished price converted to USD.
+    #[must_use]
     pub fn refurbished_usd(&self) -> Option<Decimal> {
         self.refurbished().map(|p| p * self.currency_to_usd())
     }
 
     /// Currency symbol for this domain.
-    pub fn currency_symbol(&self) -> &'static str {
+    #[must_use]
+    pub const fn currency_symbol(&self) -> &'static str {
         match self.domain {
             1 => "US$",
             2 => "£",
@@ -248,9 +301,10 @@ pub async fn fetch_keepa_data(cdp_port: u16, asin: &str, domain: u8) -> Option<K
 }
 
 /// Fetch Keepa price data for an ASIN across ALL Amazon locales.
+///
 /// Opens the Keepa page for the given domain, then clicks "Compare international
 /// Amazon prices" to trigger fetches for all other locales (US, CA, MX, UK, DE, etc.).
-/// Returns a Vec of KeepaInsight, one per domain that has data.
+/// Returns a Vec of `KeepaInsight`, one per domain that has data.
 /// `domain`: the home domain of this ASIN (1=US if from Amazon.com, 12=BR if from Amazon.com.br)
 pub async fn fetch_keepa_comparison(cdp_port: u16, asin: &str, domain: u8) -> Vec<KeepaInsight> {
     let results = fetch_keepa_ws(cdp_port, asin, domain, true).await;
@@ -258,7 +312,7 @@ pub async fn fetch_keepa_comparison(cdp_port: u16, asin: &str, domain: u8) -> Ve
     info!(
         asin = asin,
         domains = results.len(),
-        locales = ?results.iter().map(|k| k.domain_tld()).collect::<Vec<_>>(),
+        locales = ?results.iter().map(KeepaInsight::domain_tld).collect::<Vec<_>>(),
         "Keepa comparison data"
     );
 
@@ -268,6 +322,7 @@ pub async fn fetch_keepa_comparison(cdp_port: u16, asin: &str, domain: u8) -> Ve
 /// Core WebSocket interception logic shared by single-domain and comparison fetches.
 /// When `compare` is true, clicks the "Compare" button and collects products from
 /// multiple domains. Otherwise, returns after the first product is received.
+#[allow(clippy::too_many_lines)]
 async fn fetch_keepa_ws(
     cdp_port: u16,
     asin: &str,
@@ -282,7 +337,7 @@ async fn fetch_keepa_ws(
         let (browser, mut handler) = chaser_oxide::Browser::connect(
             format!("http://127.0.0.1:{cdp_port}")
         ).await.ok()?;
-        tokio::spawn(async move { while let Some(_) = handler.next().await {} });
+        tokio::spawn(async move { while handler.next().await.is_some() {} });
 
         // Close any stale Keepa tabs first to avoid cross-contamination
         let client = wreq::Client::builder().build().ok()?;
@@ -308,10 +363,14 @@ async fn fetch_keepa_ws(
         for attempt in 0..5 {
             tokio::time::sleep(std::time::Duration::from_millis(if attempt == 0 { 500 } else { 1000 })).await;
 
-            let targets: Vec<serde_json::Value> = client
-                .get(format!("http://127.0.0.1:{cdp_port}/json/list"))
-                .send().await.ok()?
-                .json().await.ok()?;
+            let targets_result: Option<Vec<serde_json::Value>> = async {
+                client
+                    .get(format!("http://127.0.0.1:{cdp_port}/json/list"))
+                    .send().await.ok()?
+                    .json().await.ok()
+            }.await;
+
+            let Some(targets) = targets_result else { continue };
 
             page_ws = targets.iter()
                 .find(|t| {
@@ -319,7 +378,7 @@ async fn fetch_keepa_ws(
                     u.contains("keepa.com") && u.contains(asin) && t["type"].as_str() == Some("page")
                 })
                 .and_then(|t| t["webSocketDebuggerUrl"].as_str())
-                .map(|s| s.to_string());
+                .map(std::string::ToString::to_string);
 
             if page_ws.is_some() {
                 debug!(attempt = attempt, "Found Keepa tab");
@@ -334,7 +393,7 @@ async fn fetch_keepa_ws(
                         u.contains("keepa.com") && t["type"].as_str() == Some("page")
                     })
                     .and_then(|t| t["webSocketDebuggerUrl"].as_str())
-                    .map(|s| s.to_string());
+                    .map(std::string::ToString::to_string);
 
                 if page_ws.is_some() {
                     debug!("Found Keepa tab (without ASIN match)");
@@ -342,13 +401,28 @@ async fn fetch_keepa_ws(
             }
         }
 
-        let page_ws = page_ws?;
+        let Some(page_ws) = page_ws else {
+            warn!("Could not find Keepa tab WebSocket URL for {asin}");
+            let _ = page.close().await;
+            return None;
+        };
 
-        let (mut ws, _) = connect_async(&page_ws).await.ok()?;
+        let ws_result = connect_async(&page_ws).await;
+        let (mut ws, _) = match ws_result {
+            Ok(pair) => pair,
+            Err(e) => {
+                warn!("Keepa WebSocket connect failed: {e}");
+                let _ = page.close().await;
+                return None;
+            }
+        };
 
         // Enable network monitoring
         let cmd = serde_json::json!({"id": 1, "method": "Network.enable", "params": {}});
-        ws.send(tokio_tungstenite::tungstenite::Message::Text(cmd.to_string().into())).await.ok()?;
+        if ws.send(tokio_tungstenite::tungstenite::Message::Text(cmd.to_string().into())).await.is_err() {
+            let _ = page.close().await;
+            return None;
+        }
         let _ = tokio::time::timeout(std::time::Duration::from_secs(3), ws.next()).await;
 
         // Collect products from WebSocket frames
@@ -390,14 +464,13 @@ async fn fetch_keepa_ws(
                     if let Some(products) = json["basicProducts"].as_array() {
                         for p in products {
                             let insight = parse_keepa_product(p);
-                            if !seen_domains.contains(&insight.domain) {
+                            if seen_domains.insert(insight.domain) {
                                 debug!(
                                     asin = %insight.asin,
                                     domain = %insight.domain_tld(),
                                     buy_box = ?insight.buy_box(),
                                     "Keepa product received"
                                 );
-                                seen_domains.insert(insight.domain);
                                 results.push(insight);
                             }
                         }
@@ -420,7 +493,7 @@ async fn fetch_keepa_ws(
 
                             // Step 1: Set locale preferences using Keepa's own storage system,
                             // then call comparePricesOverlay to open the comparison panel.
-                            let compare_js = r#"
+                            let compare_js = r"
                                 (function() {
                                     // Remove ALL overlays that might interfere
                                     ['overlayShadowTop3', 'overlayShadow', 'overlayMain'].forEach(function(id) {
@@ -457,7 +530,7 @@ async fn fetch_keepa_ws(
                                     }
                                     return 'not found';
                                 })()
-                            "#;
+                            ";
                             let eval_cmd = serde_json::json!({
                                 "id": 2,
                                 "method": "Runtime.evaluate",
@@ -469,10 +542,10 @@ async fn fetch_keepa_ws(
 
                             // Step 2: After overlay opens, click any unchecked locale checkboxes
                             // to ensure all domains are fetched.
-                            tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
-                            let enable_locales_js = r#"
+                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                            let enable_locales_js = r"
                                 (function() {
-                                    // Uncheck "Only same region" if checked
+                                    // Uncheck 'Only same region' if checked
                                     var limited = document.getElementById('casinLimitedRadio');
                                     if (limited && limited.checked) limited.click();
                                     // Enable all locale checkboxes
@@ -484,7 +557,7 @@ async fn fetch_keepa_ws(
                                     }
                                     return 'enabled ' + enabled + ' locales';
                                 })()
-                            "#;
+                            ";
                             let eval_cmd2 = serde_json::json!({
                                 "id": 3,
                                 "method": "Runtime.evaluate",
@@ -496,7 +569,7 @@ async fn fetch_keepa_ws(
                         }
                     }
                 }
-                Ok(Some(Err(_))) | Ok(None) => break, // WS closed
+                Ok(Some(Err(_)) | None) => break, // WS closed
                 Err(_) => {
                     // Timeout on ws.next() — no new data in timeout_dur
                     if !compare && got_initial {
@@ -520,6 +593,7 @@ async fn fetch_keepa_ws(
     inner.await.unwrap_or_default()
 }
 
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss, clippy::cast_precision_loss)]
 fn parse_keepa_product(p: &serde_json::Value) -> KeepaInsight {
     let csv = p["csv"].as_array();
 
@@ -534,7 +608,7 @@ fn parse_keepa_product(p: &serde_json::Value) -> KeepaInsight {
         domain: p["domainId"].as_u64().unwrap_or(1) as u8,
 
         // Metadata
-        parent_asin: p["parentAsin"].as_str().map(|s| s.to_string()),
+        parent_asin: p["parentAsin"].as_str().map(std::string::ToString::to_string),
         ean_list: p["eanList"].as_array()
             .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
             .unwrap_or_default(),
@@ -567,6 +641,11 @@ fn parse_keepa_product(p: &serde_json::Value) -> KeepaInsight {
 
         // Sales rank
         sales_rank: csv_last_value(csv, CSV_SALES_RANK),
+
+        // Price trend: prefer buy box (triplet), fall back to amazon, then new
+        trend: csv_trend(csv, CSV_BUY_BOX_SHIPPING, true)
+            .or_else(|| csv_trend(csv, CSV_AMAZON, false))
+            .or_else(|| csv_trend(csv, CSV_NEW, false)),
     }
 }
 
@@ -614,6 +693,66 @@ fn csv_min_price(csv: Option<&Vec<serde_json::Value>>, index: usize) -> Option<i
         .min()
 }
 
+// ── Price trend computation ──────────────────────────────────────────────────
+
+/// Compute price trend by comparing recent prices (last 7 days) against
+/// historical prices (prior 30 days). Returns Rising/Falling/Stable.
+#[allow(clippy::similar_names, clippy::cast_precision_loss)]
+fn csv_trend(csv: Option<&Vec<serde_json::Value>>, index: usize, is_triplet: bool) -> Option<PriceTrend> {
+    let arr = csv?.get(index)?.as_array()?;
+    let step = if is_triplet { 3 } else { 2 };
+    if arr.len() < step * 4 { return None; } // Need enough data points
+
+    // Current time in Keepa minutes
+    let now_unix = chrono::Utc::now().timestamp() / 60;
+    let now_keepa = now_unix - KEEPA_EPOCH_MINUTES;
+
+    let days_7 = 7 * 24 * 60i64;   // 7 days in minutes
+    let days_37 = 37 * 24 * 60i64;  // 37 days in minutes (7 recent + 30 prior)
+
+    let mut recent_sum = 0i64;
+    let mut recent_count = 0u32;
+    let mut prior_sum = 0i64;
+    let mut prior_count = 0u32;
+
+    let mut i = 0;
+    while i + step <= arr.len() {
+        let ts = arr[i].as_i64().unwrap_or(0);
+        let price = arr[i + 1].as_i64().unwrap_or(-1);
+        i += step;
+
+        if price <= 0 { continue; } // Out of stock or no data
+
+        let age = now_keepa - ts; // minutes ago
+        if age < 0 { continue; }
+
+        if age <= days_7 {
+            recent_sum += price;
+            recent_count += 1;
+        } else if age <= days_37 {
+            prior_sum += price;
+            prior_count += 1;
+        }
+    }
+
+    if recent_count == 0 || prior_count == 0 { return None; }
+
+    let recent_avg = recent_sum as f64 / f64::from(recent_count);
+    let prior_avg = prior_sum as f64 / f64::from(prior_count);
+
+    if prior_avg == 0.0 { return None; }
+
+    let change_pct = (recent_avg - prior_avg) / prior_avg * 100.0;
+
+    Some(if change_pct < -5.0 {
+        PriceTrend::Falling
+    } else if change_pct > 5.0 {
+        PriceTrend::Rising
+    } else {
+        PriceTrend::Stable
+    })
+}
+
 // ── CSV triplet format helpers (_SHIPPING types) ────────────────────────────
 
 /// Get the last valid price and shipping from a triplet-format CSV array.
@@ -623,10 +762,7 @@ fn csv_last_price_shipping(
     csv: Option<&Vec<serde_json::Value>>,
     index: usize,
 ) -> (Option<i64>, Option<i64>) {
-    let arr = match csv.and_then(|c| c.get(index)).and_then(|v| v.as_array()) {
-        Some(a) => a,
-        None => return (None, None),
-    };
+    let Some(arr) = csv.and_then(|c| c.get(index)).and_then(|v| v.as_array()) else { return (None, None) };
 
     // Triplets: walk backwards in steps of 3
     let len = arr.len();
@@ -638,8 +774,8 @@ fn csv_last_price_shipping(
     let mut i = len;
     while i >= 3 {
         i -= 3;
-        let price = arr.get(i + 1).and_then(|v| v.as_i64()).unwrap_or(-1);
-        let shipping = arr.get(i + 2).and_then(|v| v.as_i64()).unwrap_or(-1);
+        let price = arr.get(i + 1).and_then(serde_json::Value::as_i64).unwrap_or(-1);
+        let shipping = arr.get(i + 2).and_then(serde_json::Value::as_i64).unwrap_or(-1);
         if price > 0 {
             return (Some(price), Some(shipping.max(0)));
         }

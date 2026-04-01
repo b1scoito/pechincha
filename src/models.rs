@@ -183,6 +183,7 @@ pub struct SearchQuery {
 }
 
 impl SearchQuery {
+    #[must_use]
     pub fn simple(query: &str) -> Self {
         Self {
             query: query.to_string(),

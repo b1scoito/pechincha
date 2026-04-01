@@ -5,22 +5,30 @@ use rust_decimal::Decimal;
 use tracing::{debug, warn};
 
 use crate::error::ProviderError;
-use crate::models::*;
+use crate::models::{Currency, InstallmentInfo, PriceInfo, Product, ProductCondition, SearchQuery, SellerInfo, TaxInfo, TaxRegime};
 use crate::providers::{Provider, ProviderId};
 
 pub struct Kabum {
     client: Client,
 }
 
-impl Kabum {
-    pub fn new() -> Self {
+impl Default for Kabum {
+    fn default() -> Self {
         Self {
             client: crate::scraping::build_impersonating_client(20),
         }
     }
 }
 
+impl Kabum {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
 #[async_trait]
+#[allow(clippy::unnecessary_literal_bound)]
 impl Provider for Kabum {
     fn name(&self) -> &str {
         "Kabum"
@@ -67,9 +75,8 @@ impl Provider for Kabum {
 
 fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, ProviderError> {
     let marker = r#"<script id="__NEXT_DATA__" type="application/json">"#;
-    let start = match html.find(marker) {
-        Some(s) => s,
-        None => return Ok(Vec::new()), // Page structure changed or no results
+    let Some(start) = html.find(marker) else {
+        return Ok(Vec::new()); // Page structure changed or no results
     };
     let json_start = start + marker.len();
     let json_end = html[json_start..]
@@ -80,12 +87,11 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
     let data: serde_json::Value = serde_json::from_str(json_str)
         .map_err(|e| ProviderError::Parse(format!("__NEXT_DATA__ JSON parse error: {e}")))?;
 
-    let items = match data
+    let Some(items) = data
         .pointer("/props/pageProps/data/catalogServer/data")
         .and_then(|v| v.as_array())
-    {
-        Some(items) => items,
-        None => return Ok(Vec::new()), // No results for this search
+    else {
+        return Ok(Vec::new()); // No results for this search
     };
 
     let mut products = Vec::new();
@@ -118,8 +124,9 @@ fn parse_next_data(html: &str, _max_results: usize) -> Result<Vec<Product>, Prov
             .as_array()
             .and_then(|imgs| imgs.first())
             .and_then(|img| img.as_str())
-            .map(|s| s.to_string());
+            .map(std::string::ToString::to_string);
 
+        #[allow(clippy::cast_possible_truncation)]
         let rating = item["averageScore"]
             .as_f64()
             .map(|r| r as f32)

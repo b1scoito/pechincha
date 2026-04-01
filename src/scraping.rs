@@ -10,7 +10,8 @@ const EMULATION_PROFILES: &[fn() -> Emulation] = &[
     || Emulation::Safari18,
 ];
 
-pub fn random_user_agent() -> &'static str {
+#[must_use]
+pub const fn random_user_agent() -> &'static str {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 }
 
@@ -20,6 +21,11 @@ fn random_emulation() -> Emulation {
 }
 
 /// Build a wreq client that impersonates a real browser at the TLS/JA3/HTTP2 level.
+///
+/// # Panics
+///
+/// Panics if the HTTP client cannot be built.
+#[must_use]
 pub fn build_impersonating_client(timeout_secs: u64) -> wreq::Client {
     wreq::Client::builder()
         .emulation(random_emulation())
@@ -30,7 +36,8 @@ pub fn build_impersonating_client(timeout_secs: u64) -> wreq::Client {
         .expect("failed to build impersonating HTTP client")
 }
 
-pub fn provider_domain(provider: ProviderId) -> &'static str {
+#[must_use]
+pub const fn provider_domain(provider: ProviderId) -> &'static str {
     match provider {
         ProviderId::MercadoLivre => "www.mercadolivre.com.br",
         ProviderId::AliExpress => "pt.aliexpress.com",
@@ -40,5 +47,7 @@ pub fn provider_domain(provider: ProviderId) -> &'static str {
         ProviderId::Kabum => "www.kabum.com.br",
         ProviderId::MagazineLuiza => "www.magazineluiza.com.br",
         ProviderId::Olx => "www.olx.com.br",
+        ProviderId::GoogleShopping => "www.google.com.br",
+        ProviderId::Ebay => "www.ebay.com",
     }
 }
